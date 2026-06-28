@@ -1,15 +1,26 @@
 # First-run setup
 
-Cascade needs two things before it can do anything: an **indexer API key** and a
-reachable **download client**. The `/api/config` endpoint reports whether these
-are present (`configured: true/false`), and `/health` checks live reachability.
+On first launch — before any indexer key or client is configured — Cascade opens
+a **setup wizard** automatically. No file editing required.
 
-1. **Indexer** — open Jackett (`:9117` in the default compose), add indexers,
-   copy the API key into `JACKETT_API_KEY`.
-2. **Client** — the bundled Transmission works out of the box with the
-   `CLIENT_USER`/`CLIENT_PASS` from your `.env`. Using your own? Set
-   `DOWNLOAD_CLIENT`, `CLIENT_URL`, and creds.
-3. Restart, hit `/health`, confirm both read `reachable`.
+The wizard walks three steps:
 
-The UI surfaces this state in its stats bar and will show a banner when the app
-isn't fully configured yet.
+1. **Indexer** — enter your Jackett URL and API key, then **test connection** to
+   confirm the key works against a live search.
+2. **Download client** — pick Transmission / qBittorrent / Deluge, enter the URL
+   and credentials, and **test** that it authenticates.
+3. **Library & finish** — set the library root, app name, accent color, and
+   optional notifications. Finish writes the config and Cascade is live.
+
+## Where settings are stored
+
+The wizard writes to `CASCADE_CONFIG_FILE` (default `/config/cascade.env`). These
+values override process environment and survive restarts, so you can configure
+entirely through the UI. You can still set everything via `.env` / environment if
+you prefer — the wizard only appears when the minimum config is missing.
+
+## Re-running
+
+Delete `/config/cascade.env` (or clear `JACKETT_API_KEY`) and reload to get the
+wizard back. The `/api/config` endpoint reports `configured: true/false`, and
+`/health` checks live reachability of the indexer and client.

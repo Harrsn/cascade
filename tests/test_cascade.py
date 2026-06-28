@@ -127,3 +127,31 @@ def test_api_action_bad(client_app):
 def test_api_config(client_app):
     cfg = client_app.get("/api/config").json()
     assert cfg["title"] and "accent" in cfg
+
+
+# ---------------- setup wizard ----------------
+def test_config_save_reload(tmp_path, monkeypatch):
+    monkeypatch.setenv("CASCADE_CONFIG_FILE", str(tmp_path / "cascade.env"))
+    # other tests may have set these in the process env; clear for isolation
+    for k in ("JACKETT_API_KEY", "CLIENT_URL", "DOWNLOAD_CLIENT", "UI_ACCENT"):
+        monkeypatch.delenv(k, raising=False)
+    import importlib
+    from cascade import config as cfgmod
+    importlib.reload(cfgmod)
+    assert not cfgmod.config.configured()
+    cfgmod.save({"JACKETT_API_KEY": "k", "CLIENT_URL": "http://c",
+                 "DOWNLOAD_CLIENT": "deluge", "UI_ACCENT": "rose"})
+    assert cfgmod.config.configured()
+    assert cfgmod.config.client_kind == "deluge"
+    assert cfgmod.config.ui_accent == "rose"
+
+
+def test_config_save_whitelist(tmp_path, monkeypatch):
+    monkeypatch.setenv("CASCADE_CONFIG_FILE", str(tmp_path / "cascade.env"))
+    import importlib
+    from cascade import config as cfgmod
+    importlib.reload(cfgmod)
+    cfgmod.save({"EVIL": "x", "JACKETT_INDEXER": "1337x"})
+    body = (tmp_path / "cascade.env").read_text()
+    assert "EVIL" not in body
+    assert "JACKETT_INDEXER=1337x" in body

@@ -16,7 +16,7 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
-from .config import config
+from . import config as _cfg
 from .clients import make_client, DownloadClientError
 from . import search as searchmod
 from .notify import notify
@@ -25,16 +25,21 @@ logging.basicConfig(level=logging.INFO,
                     format="%(asctime)s %(levelname)s %(name)s %(message)s")
 log = logging.getLogger("cascade")
 
-app = FastAPI(title=config.app_title)
+app = FastAPI(title=_cfg.config.app_title)
 STATIC = Path(__file__).parent / "static"
 
 GB = 1024 ** 3
 
 
+def cfg():
+    """Always return the live (possibly hot-reloaded) config object."""
+    return _cfg.config
+
+
 def client():
     """Build the configured download client per request (cheap, stateless)."""
-    return make_client(config.client_kind, config.client_url,
-                       config.client_user, config.client_pass, config.request_timeout)
+    return make_client(cfg().client_kind, cfg().client_url,
+                       cfg().client_user, cfg().client_pass, cfg().request_timeout)
 
 
 # ----------------------------------------------------------------------------
@@ -55,11 +60,11 @@ class TorrentAction(BaseModel):
 @app.get("/api/search")
 def api_search(q: str = Query(..., min_length=1), cat: str = Query("all"),
                limit: int = Query(None)):
-    lim = limit or config.search_limit
+    lim = limit or cfg().search_limit
     try:
-        results = searchmod.search(config.jackett_url, config.jackett_api_key,
-                                   config.jackett_indexer, q, cat, lim,
-                                   config.request_timeout)
+        results = searchmod.search(cfg().jackett_url, cfg().jackett_api_key,
+                                   cfg().jackett_indexer, q, cat, lim,
+                                   cfg().request_timeout)
     except searchmod.SearchError as e:
         raise HTTPException(502, str(e))
     return {"query": q, "category": cat, "total": len(results), "results": results}
@@ -70,7 +75,7 @@ def api_add(req: AddRequest):
     if not req.magnet:
         raise HTTPException(400, "No magnet/href provided.")
     try:
-        res = client().add(req.magnet, config.download_dir or None)
+        res = client().add(req.magnet, cfg().download_dir or None)
     except DownloadClientError as e:
         raise HTTPException(502, str(e))
     log.info("Added: %s (id=%s, dup=%s)", res.name, res.id, res.duplicate)
@@ -149,7 +154,7 @@ def api_stats():
     out = {"disk": None, "down_total": 0, "up_total": 0,
            "downloading": 0, "seeding": 0, "total": 0}
     try:
-        du = shutil.disk_usage(config.disk_path)
+        du = shutil.disk_usage(cfg().disk_path)
         out["disk"] = {"free": du.free, "total": du.total,
                        "free_h": searchmod.human_size(du.free),
                        "total_h": searchmod.human_size(du.total),
@@ -174,7 +179,7 @@ def api_stats():
 
 @app.get("/api/events")
 def api_events(limit: int = Query(60, ge=1, le=300)):
-    p = Path(config.events_file)
+    p = Path(cfg().events_file)
     if not p.exists():
         return {"events": []}
     try:
@@ -200,10 +205,90 @@ def api_events(limit: int = Query(60, ge=1, le=300)):
 @app.get("/api/config")
 def api_config():
     """Non-secret config the UI needs (theme, title, thresholds, client kind)."""
-    return {"title": config.app_title, "theme": config.ui_theme,
-            "accent": config.ui_accent, "client": config.client_kind,
-            "big_download_gb": config.big_download_gb,
-            "configured": config.configured()}
+    return {"title": cfg().app_title, "theme": cfg().ui_theme,
+            "accent": cfg().ui_accent, "client": cfg().client_kind,
+            "big_download_gb": cfg().big_download_gb,
+            "configured": cfg().configured()}
+
+
+# ----------------------------------------------------------------------------
+# First-run setup wizard
+# ----------------------------------------------------------------------------
+class WizardTest(BaseModel):
+    # indexer
+    jackett_url: str | None = None
+    jackett_api_key: str | None = None
+    jackett_indexer: str | None = "all"
+    # client
+    client_kind: str | None = None
+    client_url: str | None = None
+    client_user: str | None = ""
+    client_pass: str | None = ""
+
+
+class WizardSave(WizardTest):
+    library_root: str | None = None
+    download_dir: str | None = None
+    notify_urls: str | None = None
+    ui_theme: str | None = None
+    ui_accent: str | None = None
+    app_title: str | None = None
+
+
+@app.post("/api/setup/test")
+def api_setup_test(w: WizardTest):
+    """Validate indexer + client credentials live, without saving anything."""
+    result = {"indexer": None, "client": None}
+    # indexer: a real search call is the only true test of the key
+    if w.jackett_url and w.jackett_api_key:
+        try:
+            searchmod.search(w.jackett_url.rstrip("/"), w.jackett_api_key,
+                             w.jackett_indexer or "all", "test", "all", 1, 10)
+            result["indexer"] = {"ok": True, "msg": "Indexer reachable, key accepted."}
+        except searchmod.SearchError as e:
+            result["indexer"] = {"ok": False, "msg": str(e)}
+    else:
+        result["indexer"] = {"ok": False, "msg": "URL and API key required."}
+    # client
+    if w.client_kind and w.client_url:
+        try:
+            make_client(w.client_kind, w.client_url, w.client_user or "",
+                        w.client_pass or "", 10).test()
+            result["client"] = {"ok": True, "msg": f"{w.client_kind} reachable, auth OK."}
+        except Exception as e:                       # noqa: BLE001
+            result["client"] = {"ok": False, "msg": str(e)}
+    else:
+        result["client"] = {"ok": False, "msg": "Client type and URL required."}
+    return result
+
+
+@app.post("/api/setup/save")
+def api_setup_save(w: WizardSave):
+    """Persist wizard values and hot-reload cfg(). Returns the new state."""
+    from .config import save
+    mapping = {
+        "JACKETT_URL": (w.jackett_url or "").rstrip("/") or None,
+        "JACKETT_API_KEY": w.jackett_api_key,
+        "JACKETT_INDEXER": w.jackett_indexer,
+        "DOWNLOAD_CLIENT": w.client_kind,
+        "CLIENT_URL": w.client_url,
+        "CLIENT_USER": w.client_user,
+        "CLIENT_PASS": w.client_pass,
+        "LIBRARY_ROOT": w.library_root,
+        "DOWNLOAD_DIR": w.download_dir,
+        "NOTIFY_URLS": w.notify_urls,
+        "UI_THEME": w.ui_theme,
+        "UI_ACCENT": w.ui_accent,
+        "APP_TITLE": w.app_title,
+    }
+    clean = {k: v for k, v in mapping.items() if v is not None and v != ""}
+    try:
+        save(clean)
+    except OSError as e:
+        raise HTTPException(500, f"Couldn't write config file: {e}. "
+                                 "Is the /config volume writable?")
+    log.info("Setup wizard saved config (%d keys).", len(clean))
+    return {"status": "ok", "configured": cfg().configured()}
 
 
 @app.get("/health")
@@ -211,7 +296,7 @@ def health():
     status = {"indexer": "unknown", "client": "unknown"}
     try:
         import requests
-        requests.get(f"{config.jackett_url}/", timeout=5)
+        requests.get(f"{cfg().jackett_url}/", timeout=5)
         status["indexer"] = "reachable"
     except Exception:
         status["indexer"] = "unreachable"

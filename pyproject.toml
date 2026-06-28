@@ -1,0 +1,26 @@
+[project]
+name = "cascade-media"
+version = "1.0.0"
+description = "Self-hosted search, download, sort, and manage for your media library."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [{ name = "Harrison Korodi" }]
+dependencies = [
+  "fastapi>=0.110",
+  "uvicorn[standard]>=0.27",
+  "requests>=2.31",
+  "guessit>=3.8",
+  "pydantic>=2.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/Harrsn/cascade"
+Issues = "https://github.com/Harrsn/cascade/issues"
+
+[project.scripts]
+cascade-sort = "cascade.sort:main"
+cascade-tidy = "cascade.libtidy:main"
+
+[tool.setuptools.packages.find]
+include = ["cascade*"]

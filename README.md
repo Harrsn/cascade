@@ -27,6 +27,7 @@ library in a Plex/Jellyfin layout — all from one page.
 - **🔔 Notifications** — Discord, Telegram, ntfy, Gotify, or any webhook on completion.
 - **🎨 Themes** — dark/light + accent presets.
 - **⌨️ Keyboard-driven** — arrow-key through results, Enter to add, search history.
+- **🪄 First-run wizard** — guided setup with live connection testing; no config files to edit.
 
 > **Heads up:** Cascade is a tool for managing your own downloads. You're responsible
 > for what you download and for complying with the law where you live.
@@ -55,8 +56,11 @@ that service from `docker-compose.yml` and point the env vars at yours.
 
 ### First run
 
+On first launch Cascade opens a **setup wizard** — no file editing needed:
+
 1. Open Jackett at `http://localhost:9117`, add a few indexers, copy the **API key**.
-2. Put it in `.env` as `JACKETT_API_KEY=…` and `docker compose up -d` again.
+2. In Cascade, the wizard walks you through indexer → client → library, testing each
+   connection live before saving.
 3. Search, click **add**, watch it download and get filed into `./library`.
 
 ## Bare-metal

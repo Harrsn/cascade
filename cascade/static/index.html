@@ -161,6 +161,39 @@
   body[data-accent="rose"]{--accent:#f778ba;}
   body[data-theme="light"]{--bg:#ffffff;--panel:#f4f6f8;--panel2:#eaeef2;--line:#d8dee4;
     --line-hi:#c0c8d0;--txt:#1c2128;--muted:#6a737d;}
+  /* setup wizard */
+  .wiz-overlay{position:fixed;inset:0;background:rgba(5,8,12,.82);backdrop-filter:blur(3px);
+    z-index:200;display:none;align-items:center;justify-content:center;padding:20px;}
+  .wiz-overlay.show{display:flex;}
+  .wiz{width:560px;max-width:96vw;max-height:92vh;overflow:hidden;background:var(--bg);
+    border:1px solid var(--line-hi);border-radius:14px;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,.6);}
+  .wiz-head{display:flex;align-items:center;gap:14px;padding:22px 24px 16px;border-bottom:1px solid var(--line);}
+  .wiz-logo{font-size:28px;}
+  .wiz-title{font-size:17px;font-weight:600;} .wiz-sub{color:var(--muted);font-size:12px;margin-top:2px;}
+  .wiz-body{padding:22px 24px;overflow-y:auto;}
+  .wiz-body label{display:block;font-size:12px;color:var(--muted);margin:14px 0 5px;}
+  .wiz-body input,.wiz-body select{width:100%;background:var(--panel);color:var(--txt);
+    border:1px solid var(--line-hi);border-radius:7px;padding:10px 12px;font-family:var(--mono);font-size:13px;}
+  .wiz-body input:focus,.wiz-body select:focus{outline:2px solid var(--accent);outline-offset:-1px;}
+  .wiz-body .hint{font-size:11px;color:var(--muted);margin-top:4px;line-height:1.4;}
+  .wiz-body .hint a{color:var(--accent);}
+  .wiz-intro{font-size:13px;color:var(--txt);line-height:1.6;}
+  .wiz-grid2{display:grid;grid-template-columns:1fr 1fr;gap:0 12px;}
+  .test-row{display:flex;align-items:center;gap:10px;margin-top:16px;}
+  .test-result{font-size:12px;flex:1;}
+  .test-result.ok{color:var(--good);} .test-result.bad{color:var(--bad);}
+  .wiz-foot{display:flex;align-items:center;padding:16px 24px;border-top:1px solid var(--line);}
+  .wiz-dots{flex:1;display:flex;justify-content:center;gap:6px;}
+  .wiz-dots i{width:7px;height:7px;border-radius:50%;background:var(--line-hi);}
+  .wiz-dots i.on{background:var(--accent);}
+  .wiz-btn{background:var(--accent);border:1px solid var(--accent);color:#fff;border-radius:7px;
+    padding:9px 20px;font-family:var(--mono);font-size:13px;font-weight:600;cursor:pointer;}
+  .wiz-btn:hover{filter:brightness(1.08);} .wiz-btn:disabled{opacity:.5;cursor:default;}
+  .wiz-btn.ghost{background:transparent;border-color:var(--line-hi);color:var(--muted);font-weight:400;}
+  .wiz-btn.ghost:hover{border-color:var(--txt);color:var(--txt);filter:none;}
+  .accent-swatches{display:flex;gap:8px;margin-top:6px;}
+  .accent-swatches button{width:28px;height:28px;border-radius:50%;border:2px solid transparent;cursor:pointer;}
+  .accent-swatches button.sel{border-color:var(--txt);}
   @media (max-width:640px){td.trk,th.trk{display:none;}}
 </style>
 </head>
@@ -238,6 +271,22 @@
   </div>
   <div class="panel-body" id="panelBody"></div>
 </aside>
+
+<!-- first-run setup wizard -->
+<div class="wiz-overlay" id="wizOverlay">
+  <div class="wiz">
+    <div class="wiz-head">
+      <span class="wiz-logo">🌊</span>
+      <div><div class="wiz-title">Welcome to Cascade</div><div class="wiz-sub" id="wizStep">Step 1 of 3 · Indexer</div></div>
+    </div>
+    <div class="wiz-body" id="wizBody"></div>
+    <div class="wiz-foot">
+      <button class="wiz-btn ghost" id="wizBack" style="visibility:hidden">back</button>
+      <div class="wiz-dots" id="wizDots"></div>
+      <button class="wiz-btn" id="wizNext">next</button>
+    </div>
+  </div>
+</div>
 
 <div class="toast" id="toast"></div>
 
@@ -521,6 +570,152 @@ async function loadConfig(){
     if(typeof cfg.big_download_gb==="number") window.__setBig(cfg.big_download_gb);
   }catch(_){}
 }
+/* ---------------- first-run setup wizard ---------------- */
+const wizState = {
+  step: 0,
+  data: { jackett_url:"http://localhost:9117", jackett_api_key:"", jackett_indexer:"all",
+    client_kind:"transmission", client_url:"http://localhost:9091/transmission/rpc",
+    client_user:"", client_pass:"", library_root:"/library", download_dir:"/downloads",
+    notify_urls:"", ui_accent:"blue", app_title:"Cascade" },
+  tested: { indexer:false, client:false },
+};
+const CLIENT_DEFAULTS = {
+  transmission:"http://localhost:9091/transmission/rpc",
+  qbittorrent:"http://localhost:8080",
+  deluge:"http://localhost:8112",
+};
+const ACCENTS = ["blue","green","purple","amber","rose"];
+const ACCENT_HEX = {blue:"#2f81f7",green:"#3fb950",purple:"#a371f7",amber:"#d29922",rose:"#f778ba"};
+
+function wizSteps(){ return [
+  { title:"Indexer", render:()=>`
+    <div class="wiz-intro">Cascade searches through <b>Jackett</b> (or Prowlarr). Add a few indexers in its dashboard, then paste the API key here.</div>
+    <label>Jackett URL</label>
+    <input id="w_jurl" value="${esc(wizState.data.jackett_url)}" placeholder="http://localhost:9117">
+    <label>API key</label>
+    <input id="w_jkey" value="${esc(wizState.data.jackett_api_key)}" placeholder="from Jackett dashboard, top-right">
+    <div class="hint">Open Jackett at its URL → add indexers → copy the <b>API Key</b> shown top-right.</div>
+    <div class="test-row">
+      <button class="wiz-btn ghost" id="w_testIdx">test connection</button>
+      <span class="test-result" id="w_idxResult"></span>
+    </div>` },
+  { title:"Download client", render:()=>`
+    <div class="wiz-intro">Which torrent client should Cascade drive? It works with all three — pick what you run.</div>
+    <label>Client</label>
+    <select id="w_ckind">
+      ${["transmission","qbittorrent","deluge"].map(k=>`<option value="${k}" ${wizState.data.client_kind===k?"selected":""}>${k}</option>`).join("")}
+    </select>
+    <label>Client URL</label>
+    <input id="w_curl" value="${esc(wizState.data.client_url)}">
+    <div class="wiz-grid2">
+      <div><label>Username</label><input id="w_cuser" value="${esc(wizState.data.client_user)}" placeholder="${wizState.data.client_kind==='deluge'?'(not used)':''}"></div>
+      <div><label>Password</label><input id="w_cpass" type="password" value="${esc(wizState.data.client_pass)}"></div>
+    </div>
+    <div class="test-row">
+      <button class="wiz-btn ghost" id="w_testCli">test connection</button>
+      <span class="test-result" id="w_cliResult"></span>
+    </div>` },
+  { title:"Library & finish", render:()=>`
+    <div class="wiz-intro">Where should finished media land, and how should it look?</div>
+    <label>Library root <span class="hint" style="display:inline">(movies/ &amp; tvshows/ go here)</span></label>
+    <input id="w_lib" value="${esc(wizState.data.library_root)}">
+    <label>App name</label>
+    <input id="w_title" value="${esc(wizState.data.app_title)}">
+    <label>Accent color</label>
+    <div class="accent-swatches" id="w_accents">
+      ${ACCENTS.map(a=>`<button data-a="${a}" class="${wizState.data.ui_accent===a?'sel':''}" style="background:${ACCENT_HEX[a]}"></button>`).join("")}
+    </div>
+    <label>Notifications <span class="hint" style="display:inline">(optional)</span></label>
+    <input id="w_notify" value="${esc(wizState.data.notify_urls)}" placeholder="discord://… , ntfy://ntfy.sh/topic">
+    <div class="hint">Comma-separated. Supports Discord, Telegram, ntfy, Gotify, or any webhook. Leave blank to skip.</div>` },
+]; }
+
+function openWizard(){ wizState.step=0; renderWiz(); $("wizOverlay").classList.add("show"); }
+function closeWizard(){ $("wizOverlay").classList.remove("show"); }
+
+function renderWiz(){
+  const steps=wizSteps(), s=steps[wizState.step];
+  $("wizStep").textContent=`Step ${wizState.step+1} of ${steps.length} · ${s.title}`;
+  $("wizBody").innerHTML=s.render();
+  $("wizDots").innerHTML=steps.map((_,i)=>`<i class="${i===wizState.step?'on':''}"></i>`).join("");
+  $("wizBack").style.visibility = wizState.step===0?"hidden":"visible";
+  $("wizNext").textContent = wizState.step===steps.length-1?"finish":"next";
+  wireWizStep();
+}
+
+function wireWizStep(){
+  if(wizState.step===0){
+    $("w_testIdx").addEventListener("click",async()=>{
+      wizState.data.jackett_url=$("w_jurl").value.trim();
+      wizState.data.jackett_api_key=$("w_jkey").value.trim();
+      const res=$("w_idxResult"); res.textContent="testing…"; res.className="test-result";
+      const r=await wizTest(); const i=r.indexer||{};
+      res.textContent=i.msg||"?"; res.className="test-result "+(i.ok?"ok":"bad"); wizState.tested.indexer=!!i.ok;
+    });
+  }
+  if(wizState.step===1){
+    $("w_ckind").addEventListener("change",e=>{ wizState.data.client_kind=e.target.value;
+      $("w_curl").value=CLIENT_DEFAULTS[e.target.value]||""; });
+    $("w_testCli").addEventListener("click",async()=>{
+      wizState.data.client_kind=$("w_ckind").value;
+      wizState.data.client_url=$("w_curl").value.trim();
+      wizState.data.client_user=$("w_cuser").value;
+      wizState.data.client_pass=$("w_cpass").value;
+      const res=$("w_cliResult"); res.textContent="testing…"; res.className="test-result";
+      const r=await wizTest(); const c=r.client||{};
+      res.textContent=c.msg||"?"; res.className="test-result "+(c.ok?"ok":"bad"); wizState.tested.client=!!c.ok;
+    });
+  }
+  if(wizState.step===2){
+    $("w_accents").querySelectorAll("button[data-a]").forEach(b=>b.addEventListener("click",()=>{
+      wizState.data.ui_accent=b.dataset.a;
+      $("w_accents").querySelectorAll("button").forEach(x=>x.classList.remove("sel"));
+      b.classList.add("sel"); document.body.dataset.accent=b.dataset.a;
+    }));
+  }
+}
+
+async function wizTest(){
+  try{ const r=await fetch("/api/setup/test",{method:"POST",headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({jackett_url:wizState.data.jackett_url,jackett_api_key:wizState.data.jackett_api_key,
+      jackett_indexer:wizState.data.jackett_indexer,client_kind:wizState.data.client_kind,
+      client_url:wizState.data.client_url,client_user:wizState.data.client_user,client_pass:wizState.data.client_pass})});
+    return await r.json();
+  }catch(_){ return {}; }
+}
+
+function captureWizStep(){
+  if(wizState.step===0){ wizState.data.jackett_url=$("w_jurl").value.trim(); wizState.data.jackett_api_key=$("w_jkey").value.trim(); }
+  if(wizState.step===1){ wizState.data.client_kind=$("w_ckind").value; wizState.data.client_url=$("w_curl").value.trim();
+    wizState.data.client_user=$("w_cuser").value; wizState.data.client_pass=$("w_cpass").value; }
+  if(wizState.step===2){ wizState.data.library_root=$("w_lib").value.trim(); wizState.data.app_title=$("w_title").value.trim();
+    wizState.data.notify_urls=$("w_notify").value.trim(); }
+}
+
+$("wizBack").addEventListener("click",()=>{ captureWizStep(); if(wizState.step>0){ wizState.step--; renderWiz(); } });
+$("wizNext").addEventListener("click",async()=>{
+  captureWizStep();
+  const steps=wizSteps();
+  if(wizState.step<steps.length-1){ wizState.step++; renderWiz(); return; }
+  // finish: save
+  $("wizNext").disabled=true; $("wizNext").textContent="saving…";
+  try{
+    const r=await fetch("/api/setup/save",{method:"POST",headers:{"Content-Type":"application/json"},
+      body:JSON.stringify(wizState.data)});
+    if(!r.ok) throw new Error((await r.json()).detail||r.statusText);
+    closeWizard(); toast("Setup complete — Cascade is configured.");
+    await loadConfig(); pollAll();
+  }catch(err){ $("wizNext").disabled=false; $("wizNext").textContent="finish"; toast("Save failed: "+err.message,"err"); }
+});
+
+/* trigger wizard on first run (config not yet complete) */
+async function checkFirstRun(){
+  try{ const r=await fetch("/api/config"); const cfg=await r.json();
+    if(!cfg.configured) openWizard();
+  }catch(_){}
+}
+checkFirstRun();
+
 loadConfig();
 
 pollAll();

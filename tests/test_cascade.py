@@ -470,3 +470,20 @@ def test_library_auto_import(tmp_path, monkeypatch):
     r = I.import_library()
     assert r["shows_imported"] == 1
     assert any(s["title"] == "The Office" for s in S.list_series())
+
+
+def test_movie_subset_matching():
+    from cascade.movies import _movie_matches as mm
+    # truncated disk folders should match full TMDb titles when years agree
+    assert mm("The Chronicles of Narnia", 2005,
+              "The Chronicles of Narnia: The Lion, the Witch and the Wardrobe", 2005)
+    assert mm("The Hobbit Battle Of The Five Armies", 2014,
+              "The Hobbit: The Battle of the Five Armies", 2014)
+    # franchise entries with shared truncated folder names disambiguate by year
+    assert not mm("The Hunger Games Mockingjay", 2015,
+                  "The Hunger Games: Mockingjay - Part 1", 2014)
+    assert not mm("The Chronicles of Narnia", 2008,
+                  "The Chronicles of Narnia: The Lion, the Witch and the Wardrobe", 2005)
+    # exact title tolerates 1-year metadata fuzz; unrelated titles don't match
+    assert mm("Dune", 2021, "Dune", 2020)
+    assert not mm("The Batman", 2022, "Batman Begins", 2005)

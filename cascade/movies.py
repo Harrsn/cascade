@@ -53,22 +53,53 @@ def delete_movie(movie_id: int) -> None:
         c.execute("DELETE FROM wanted WHERE kind='movie' AND series_id=?", (movie_id,))
 
 
+def _movie_matches(lib_title: str, lib_year, mon_title: str, mon_year) -> bool:
+    """Does a library movie match a monitored movie? Handles the common case
+    where the disk folder is a truncated/abbreviated form of TMDb's canonical
+    title ('The Chronicles of Narnia' folder vs 'The Chronicles of Narnia: The
+    Lion, the Witch and the Wardrobe'). Strategy:
+      - if years are both known and differ by >1, it's NOT a match (this is what
+        disambiguates three Narnia films all foldered as 'The Chronicles of Narnia')
+      - then accept exact normalized equality, OR one title being a token-subset
+        of the other (prefix/contains), so truncated folders still match.
+    """
+    lk = library.normalize_title(lib_title)
+    mk = library.normalize_title(mon_title)
+    if not lk or not mk:
+        return False
+    if lk == mk:
+        # exact title: allow a 1-year metadata fuzz
+        if lib_year and mon_year and abs(int(lib_year) - int(mon_year)) > 1:
+            return False
+        return True
+    # Subset/truncated-title match: the year is doing the disambiguation work
+    # (e.g. Mockingjay Part 1 2014 vs Part 2 2015 share a truncated folder name),
+    # so require EXACT year agreement here. If either year is missing we can't
+    # safely disambiguate a subset match, so refuse.
+    if not lib_year or not mon_year or int(lib_year) != int(mon_year):
+        return False
+    a, b = sorted([lk.split(), mk.split()], key=len)  # a = shorter
+    if b[:len(a)] == a:                  # contiguous prefix
+        return True
+    if set(a).issubset(set(b)) and len(a) >= 2:   # all shorter words present
+        return True
+    return False
+
+
 def reconcile(movie_id: int) -> dict:
-    """Mark a monitored movie have/wanted by matching the library (normalized
-    title + year). Populates the wanted table for missing movies."""
+    """Mark a monitored movie have/wanted by matching the library. Uses
+    year-anchored subset matching so truncated disk folders still match TMDb's
+    full canonical titles. Populates the wanted table for missing movies."""
     m = get_movie(movie_id)
     if not m:
         return {"have": False}
-    key = library.normalize_title(m["title"])
     with db.connect() as c:
         lib = c.execute("SELECT title, year, quality FROM library_movies").fetchall()
     owned = None
     for r in lib:
-        if library.normalize_title(r["title"]) == key:
-            # year match if both known; otherwise title-only is acceptable
-            if not m.get("year") or not r["year"] or abs((r["year"] or 0) - m["year"]) <= 1:
-                owned = r
-                break
+        if _movie_matches(r["title"], r["year"], m["title"], m.get("year")):
+            owned = r
+            break
     have = owned is not None
     with db.connect() as c:
         c.execute("UPDATE movies SET status=? WHERE id=?",

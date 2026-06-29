@@ -247,3 +247,38 @@ def test_classify_switch_and_console():
     from cascade.classify import classify
     assert classify("Super Mario Odyssey NSW", None)["platform"] == "Nintendo Switch"
     assert classify("Elden Ring PS5", None)["type"] == "game"
+
+
+# ---------------- quality profiles ----------------
+def test_profile_passes_and_score():
+    from cascade import profiles as p
+    GB = 1024 ** 3
+    prof = {"min_seeders": 3, "resolutions": ["1080p", "720p"],
+            "sources": ["WEB-DL", "BluRay"], "max_size_gb": 8, "min_size_gb": 0}
+    good = {"seeders": 50, "size": int(4 * GB), "badges": {"res": "1080p", "source": "WEB-DL"}}
+    toobig = {"seeders": 50, "size": int(40 * GB), "badges": {"res": "1080p", "source": "WEB-DL"}}
+    lowseed = {"seeders": 1, "size": int(4 * GB), "badges": {"res": "1080p", "source": "WEB-DL"}}
+    assert p.passes(good, prof)[0] is True
+    assert p.passes(toobig, prof)[0] is False
+    assert p.passes(lowseed, prof)[0] is False
+
+
+def test_profile_ranking_prefers_better():
+    from cascade import profiles as p
+    GB = 1024 ** 3
+    prof = {"min_seeders": 0, "resolutions": ["1080p", "720p"],
+            "sources": ["WEB-DL", "BluRay"], "max_size_gb": 0}
+    results = [
+        {"title": "720p WEB", "seeders": 5, "size": GB, "badges": {"res": "720p", "source": "WEB-DL"}},
+        {"title": "1080p WEB", "seeders": 5, "size": GB, "badges": {"res": "1080p", "source": "WEB-DL"}},
+    ]
+    assert p.best(results, prof)["title"] == "1080p WEB"
+
+
+def test_profile_api_crud(client_app):
+    created = client_app.post("/api/profiles", json={
+        "name": "T", "min_seeders": 2, "resolutions": ["1080p"], "sources": ["WEB-DL"]})
+    pid = created.json()["id"]
+    names = [p["name"] for p in client_app.get("/api/profiles").json()["profiles"]]
+    assert "T" in names
+    client_app.delete(f"/api/profiles/{pid}")

@@ -108,10 +108,79 @@ def check_subscription(sub: dict) -> dict:
     return result
 
 
-def run_once() -> dict:
-    """Check all enabled subscriptions once. Synchronous; safe to call from an
-    endpoint (the 'check now' button) or the loop."""
+def hunt_wanted() -> dict:
+    """Search for and grab wanted episodes (missing + upgrades). Builds an
+    episode-specific query per wanted item, ranks by the series' profile, and
+    grabs the best. Reuses the same grab+dedupe path as subscriptions."""
+    from . import series as series_mod
     db.init()
+    wanted = series_mod.list_wanted("wanted")
+    grabbed = 0
+    details = []
+    for w in wanted:
+        title = w.get("series_title") or ""
+        season, episode = w.get("season"), w.get("episode")
+        if not title or season is None or episode is None:
+            continue
+        query = f"{title} S{int(season):02d}E{int(episode):02d}"
+        res = {"want": query, "reason": w.get("reason"), "grabbed": None, "error": None}
+        try:
+            results = searchmod.search(
+                config.jackett_url, config.jackett_api_key, config.jackett_indexer,
+                query, "all", config.search_limit, config.request_timeout)
+        except searchmod.SearchError as e:
+            res["error"] = f"search failed: {e}"
+            details.append(res)
+            continue
+
+        fresh = [r for r in results if not db.already_grabbed(r["title"])]
+        # rank by the series' profile
+        profile = _load_profile_for_series(w.get("series_id"))
+        if profile:
+            ranked = prof.rank(fresh, profile)
+        else:
+            ranked = sorted(fresh, key=lambda x: x.get("seeders", 0), reverse=True)
+        if not ranked:
+            details.append(res)
+            continue
+
+        pick = ranked[0]
+        if not db.mark_grabbed(pick["title"], None):
+            details.append(res)
+            continue
+        try:
+            client = make_client(config.client_kind, config.client_url,
+                                 config.client_user, config.client_pass, config.request_timeout)
+            client.add(pick["href"], config.download_dir or None)
+            res["grabbed"] = pick["title"]
+            grabbed += 1
+            db.add_history("added", pick["title"], f"hunt: {query} ({w.get('reason')})")
+            # mark the wanted row as grabbed
+            with db.connect() as c:
+                c.execute("UPDATE wanted SET status='grabbed', last_search=? WHERE id=?",
+                          (datetime.now().isoformat(timespec="seconds"), w["id"]))
+            log.info("Hunt grabbed '%s' for %s", pick["title"], query)
+        except DownloadClientError as e:
+            res["error"] = f"add failed: {e}"
+            with db.connect() as c:
+                c.execute("DELETE FROM grabbed WHERE title=?", (pick["title"],))
+        details.append(res)
+    return {"wanted": len(wanted), "grabbed": grabbed, "details": details}
+
+
+def _load_profile_for_series(series_id):
+    if not series_id:
+        return None
+    with db.connect() as c:
+        row = c.execute("SELECT profile_id FROM series WHERE id=?", (series_id,)).fetchone()
+    return _load_profile(row["profile_id"]) if row else None
+
+
+def run_once() -> dict:
+    """One full cycle: check query-subscriptions, then run the library-aware
+    pipeline (scan → reconcile monitored series → hunt wanted)."""
+    db.init()
+    # 1. legacy query subscriptions
     subs = db.list_subscriptions(enabled_only=True)
     grabbed = 0
     details = []
@@ -120,9 +189,25 @@ def run_once() -> dict:
         details.append(r)
         if r["grabbed"]:
             grabbed += 1
+
+    # 2. library-aware pipeline
+    lib_summary = {}
+    try:
+        from . import library, series as series_mod
+        library.scan()
+        recon = series_mod.reconcile_all()
+        hunt = hunt_wanted()
+        grabbed += hunt.get("grabbed", 0)
+        lib_summary = {"reconcile": recon, "hunt_grabbed": hunt.get("grabbed", 0),
+                       "wanted": hunt.get("wanted", 0)}
+    except Exception as e:                       # noqa: BLE001 - never kill the tick
+        log.warning("Library pipeline error: %s", e)
+        lib_summary = {"error": str(e)}
+
     _last_run.update(ts=datetime.now().isoformat(timespec="seconds"),
                      checked=len(subs), grabbed=grabbed)
-    return {"checked": len(subs), "grabbed": grabbed, "details": details}
+    return {"checked": len(subs), "grabbed": grabbed, "details": details,
+            "library": lib_summary}
 
 
 def last_run() -> dict:

@@ -482,7 +482,10 @@ async function loadStatsbar(){
 let showsData=[],profilesCache=[];
 async function loadShows(){
   $("showsGrid").innerHTML="<div class='muted'>loading…</div>";
-  try{[showsData,profilesCache]=await Promise.all([jget("/api/series").then(d=>d.series||[]),jget("/api/profiles").then(d=>d.profiles||[])]);
+  try{
+    const admin = ME && ME.role==="admin";
+    showsData = await jget("/api/series").then(d=>d.series||[]);
+    if(admin){ try{ profilesCache = await jget("/api/profiles").then(d=>d.profiles||[]); }catch(_){ profilesCache=[]; } }
     renderShows();}catch(_){$("showsGrid").innerHTML="<div class='empty'>Couldn't load shows.</div>";}
 }
 function renderShows(){
@@ -565,7 +568,10 @@ $("showsImport").addEventListener("click",async()=>{
 let moviesData=[];
 async function loadMovies(){
   $("moviesGrid").innerHTML="<div class='muted'>loading…</div>";
-  try{[moviesData,profilesCache]=await Promise.all([jget("/api/movies").then(d=>d.movies||[]),jget("/api/profiles").then(d=>d.profiles||[])]);
+  try{
+    const admin = ME && ME.role==="admin";
+    moviesData = await jget("/api/movies").then(d=>d.movies||[]);
+    if(admin){ try{ profilesCache = await jget("/api/profiles").then(d=>d.profiles||[]); }catch(_){ profilesCache=[]; } }
     renderMovies();}catch(_){$("moviesGrid").innerHTML="<div class='empty'>Couldn't load movies.</div>";}
 }
 function renderMovies(){
@@ -850,6 +856,7 @@ async function loadMe(){
 }
 function applyRoleUI(){
   const admin = ME && ME.role==="admin";
+  if(admin) startAdminPolling();
   // admin-only nav surfaces
   if(admin) $("usersBtn").style.display="";
   // hide indexer Search, Auto-grab, Profiles, Settings, Activity from non-admins
@@ -985,7 +992,12 @@ $("modal").addEventListener("click",e=>{if(e.target.id==="modal")closeModal();})
 
 // ============ init ============
 loadMe();
-loadStatsbar();setInterval(loadStatsbar,8000);refreshMeta();
+refreshMeta();
+
+function startAdminPolling(){
+  loadStatsbar();
+  if(!window._statsTimer) window._statsTimer=setInterval(loadStatsbar,8000);
+}
 </script>
 </body>
 </html>

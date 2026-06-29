@@ -31,6 +31,34 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from cascade.config import config           # noqa: E402
 from cascade.notify import notify           # noqa: E402
 from cascade.clients import make_client, DownloadClientError  # noqa: E402
+try:
+    from cascade import db                  # noqa: E402
+except Exception:                            # noqa: BLE001 - DB is optional for the hook
+    db = None
+
+
+def _path_size(path: str) -> int:
+    """Total bytes of the completed download (file or dir tree)."""
+    p = Path(path)
+    try:
+        if p.is_file():
+            return p.stat().st_size
+        if p.is_dir():
+            return sum(f.stat().st_size for f in p.rglob("*") if f.is_file())
+    except OSError:
+        pass
+    return 0
+
+
+def record(kind: str, name: str, detail: str = "", size: int = 0):
+    """Write both the JSONL event (live feed) and the DB history (stats)."""
+    write_event(kind, name, detail)
+    if db is not None:
+        try:
+            db.init()
+            db.add_history(kind, name, detail, size)
+        except Exception:                    # noqa: BLE001 - never break the hook
+            pass
 
 
 def resolve_completion():
@@ -64,7 +92,8 @@ def main():
         print("No completion info in environment; nothing to do.", file=sys.stderr)
         return 0
 
-    write_event("completed", name, "download finished, sorting")
+    size = _path_size(path)
+    record("completed", name, "download finished, sorting", size)
     if "completed" in config.notify_on:
         notify(config.notify_urls, "Download complete", name)
 
@@ -73,12 +102,12 @@ def main():
     env = dict(os.environ, CASCADE_PATH=path)
     res = subprocess.run([sys.executable, str(sorter)], env=env)
     if res.returncode != 0:
-        write_event("sort_failed", name, f"sort failed (rc={res.returncode})")
+        record("sort_failed", name, f"sort failed (rc={res.returncode})")
         if "failed" in config.notify_on:
             notify(config.notify_urls, "Sort failed", name)
         return res.returncode
 
-    write_event("sorted", name, "filed onto library")
+    record("sorted", name, "filed onto library")
     if "sorted" in config.notify_on:
         notify(config.notify_urls, "Sorted to library", name)
 
@@ -87,9 +116,9 @@ def main():
         try:
             make_client(config.client_kind, config.client_url, config.client_user,
                         config.client_pass, config.request_timeout).remove(tid, True)
-            write_event("removed", name, "removed from client (auto-cleanup)")
+            record("removed", name, "removed from client (auto-cleanup)")
         except DownloadClientError as e:
-            write_event("remove_failed", name, f"remove failed: {e}")
+            record("remove_failed", name, f"remove failed: {e}")
     return 0
 
 

@@ -88,6 +88,11 @@ def api_add(req: AddRequest):
     except DownloadClientError as e:
         raise HTTPException(502, str(e))
     log.info("Added: %s (id=%s, dup=%s)", res.name, res.id, res.duplicate)
+    if not res.duplicate:
+        try:
+            db.add_history("added", res.name or req.title or "", "added to client")
+        except Exception:                    # noqa: BLE001
+            pass
     return {"status": "ok", "id": res.id, "name": res.name, "duplicate": res.duplicate}
 
 

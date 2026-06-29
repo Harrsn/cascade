@@ -614,3 +614,58 @@ def test_multisegment_episode_parsing(tmp_path, monkeypatch):
     # only the genuine extra remains unparsed
     assert rep["total"] == 1
     assert "Behind the Scenes" in rep["unparsed_tv"][0]["name"]
+
+
+def _auth_setup(tmp_path, monkeypatch):
+    monkeypatch.setenv("EVENTS_FILE", str(tmp_path / "events.jsonl"))
+    monkeypatch.setenv("SESSION_SECRET", "test-secret")
+    import importlib
+    from faucet import config as cfgmod
+    importlib.reload(cfgmod)
+    from faucet import db
+    importlib.reload(db)
+    db.init()
+    from faucet import auth
+    importlib.reload(auth)
+    return auth
+
+
+def test_auth_first_user_is_admin(tmp_path, monkeypatch):
+    auth = _auth_setup(tmp_path, monkeypatch)
+    uid, err = auth.create_user("admin1", "supersecret123")
+    assert err is None
+    u = auth.get_user(uid)
+    assert u["role"] == "admin" and u["status"] == "active"
+    assert u["pw_hash"].startswith("$2b$")
+
+
+def test_auth_pending_gate_and_login(tmp_path, monkeypatch):
+    auth = _auth_setup(tmp_path, monkeypatch)
+    auth.create_user("admin1", "supersecret123")          # bootstrap admin
+    uid2, _ = auth.create_user("guest", "guestpass123")    # pending
+    u2 = auth.get_user(uid2)
+    assert u2["status"] == "pending"
+    _, err = auth.authenticate("guest", "guestpass123")
+    assert "approval" in err
+    auth.set_status(uid2, "active")
+    user, err = auth.authenticate("guest", "guestpass123")
+    assert user and not err
+
+
+def test_auth_sessions_and_revocation(tmp_path, monkeypatch):
+    auth = _auth_setup(tmp_path, monkeypatch)
+    uid, _ = auth.create_user("admin1", "supersecret123")
+    cookie = auth.create_session(uid)
+    assert auth.session_user(cookie)["username"] == "admin1"
+    assert auth.session_user(cookie + "x") is None         # tampered
+    auth.destroy_session(cookie)
+    assert auth.session_user(cookie) is None               # revoked
+
+
+def test_auth_lockout(tmp_path, monkeypatch):
+    auth = _auth_setup(tmp_path, monkeypatch)
+    auth.create_user("admin1", "supersecret123")
+    for _ in range(5):
+        auth.authenticate("admin1", "wrong")
+    _, err = auth.authenticate("admin1", "supersecret123")
+    assert "locked" in err.lower()

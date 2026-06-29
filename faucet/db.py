@@ -105,6 +105,47 @@ CREATE TABLE IF NOT EXISTS grabbed (
 
 -- ── Library awareness (Sonarr/Radarr-style) ──
 
+-- ── Authentication: users + sessions ──
+
+-- User accounts. Roles: admin | user. Status: pending | active | disabled.
+-- New self-registrations land as 'pending' and can do nothing until an admin
+-- approves (activates) them.
+CREATE TABLE IF NOT EXISTS users (
+    id            INTEGER PRIMARY KEY AUTOINCREMENT,
+    username      TEXT UNIQUE NOT NULL,
+    email         TEXT,
+    pw_hash       TEXT NOT NULL,        -- bcrypt
+    role          TEXT NOT NULL DEFAULT 'user',     -- admin | user
+    status        TEXT NOT NULL DEFAULT 'pending',  -- pending | active | disabled
+    created_ts    TEXT,
+    last_login    TEXT,
+    failed_logins INTEGER DEFAULT 0,
+    locked_until  TEXT                  -- ISO ts; set on too many failed logins
+);
+
+-- Server-side sessions (so logout / disable / password-reset revoke instantly).
+CREATE TABLE IF NOT EXISTS sessions (
+    id          TEXT PRIMARY KEY,        -- random token (the cookie value is signed)
+    user_id     INTEGER NOT NULL,
+    created_ts  TEXT,
+    expires_ts  TEXT,
+    ip          TEXT,
+    user_agent  TEXT,
+    FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+-- One-time password-reset tokens (admin-generated now; email-delivered later).
+CREATE TABLE IF NOT EXISTS reset_tokens (
+    token       TEXT PRIMARY KEY,
+    user_id     INTEGER NOT NULL,
+    created_ts  TEXT,
+    expires_ts  TEXT,
+    used        INTEGER DEFAULT 0,
+    FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+-- ── Authentication: users + sessions (end) ──
+
 -- Files the scanner couldn't parse into a show/episode or movie (for the report).
 CREATE TABLE IF NOT EXISTS scan_unparsed (
     id          INTEGER PRIMARY KEY AUTOINCREMENT,

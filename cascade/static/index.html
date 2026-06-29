@@ -236,6 +236,11 @@
   .hist-row .ht{color:var(--muted);font-size:10px;white-space:nowrap;}
   .hist-row .he{font-size:10px;padding:1px 6px;border-radius:3px;border:1px solid var(--line-hi);white-space:nowrap;}
   .hist-row .hn{flex:1;word-break:break-word;}
+  .tag.ctype{font-weight:600;}
+  .tag.ctype.game{background:rgba(163,113,247,.15);color:var(--purple);border-color:rgba(163,113,247,.3);}
+  .tag.ctype.movie{background:rgba(47,129,247,.15);color:var(--accent);border-color:rgba(47,129,247,.3);}
+  .tag.ctype.tv{background:rgba(63,185,80,.15);color:var(--good);border-color:rgba(63,185,80,.3);}
+  .tag.platform{background:var(--panel2);color:var(--muted);}
   @media (max-width:640px){td.trk,th.trk{display:none;}}
 </style>
 </head>
@@ -437,6 +442,13 @@ function applyView(reset){
   kbSel=-1; updateKbSel();
 }
 
+function typeBadge(r){
+  if(!r||!r.ctype) return "";
+  const icons={game:"🎮",movie:"🎬",tv:"📺",audio:"🎵",book:"📚",other:"📦"};
+  let h=`<span class="tag ctype ${esc(r.ctype)}">${icons[r.ctype]||""} ${esc(r.ctype)}</span>`;
+  if(r.platform) h+=`<span class="tag platform">${esc(r.platform)}</span>`;
+  return h;
+}
 function badgeHtml(b){ if(!b) return ""; let h="";
   if(b.res) h+=`<span class="tag res">${esc(b.res)}</span>`;
   if(b.source) h+=`<span class="tag src">${esc(b.source)}</span>`;
@@ -457,7 +469,7 @@ function renderRows(list){
       <td class="seed ${seedClass(r.seeders)}">${r.seeders}${healthHtml(r)}</td>
       <td class="size">${esc(r.size_h)}</td>
       <td class="trk">${esc(r.tracker||"")}</td>
-      <td class="title">${esc(r.title)}${badgeHtml(r.badges)}</td>
+      <td class="title">${esc(r.title)}${typeBadge(r)}${badgeHtml(r.badges)}</td>
       <td class="act"><button class="add ${big?'warn-size':''}" title="${big?'Large file — confirm':''}">add</button></td>`;
     tr.querySelector(".add").addEventListener("click",e=>addTorrent(r,e.target));
     $("rows").appendChild(tr);

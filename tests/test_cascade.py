@@ -497,3 +497,53 @@ def test_pack_classification():
     assert cp("American Dad Seasons 1-15 1080p")["kind"] == "series"
     assert cp("Stranger Things Complete Series")["kind"] == "series"
     assert cp("The Office Season 2 1080p")["season"] == 2
+
+
+def test_scan_report(tmp_path, monkeypatch):
+    monkeypatch.setenv("EVENTS_FILE", str(tmp_path / "events.jsonl"))
+    tv = tmp_path / "lib" / "tvshows" / "Good Show" / "Season 01"
+    tv.mkdir(parents=True)
+    (tv / "Good Show - S01E01.mkv").write_bytes(b"x" * (60 * 1024 * 1024))
+    (tv / "mysteryfile.mkv").write_bytes(b"x" * (60 * 1024 * 1024))  # unparsable
+    monkeypatch.setenv("LIBRARY_ROOT", str(tmp_path / "lib"))
+    import importlib
+    from cascade import config as cfgmod
+    importlib.reload(cfgmod)
+    from cascade import db
+    importlib.reload(db)
+    db.init()
+    from cascade import library as L
+    importlib.reload(L)
+    L.scan()
+    rep = L.scan_report()
+    assert rep["total"] == 1
+    assert rep["unparsed_tv"][0]["name"] == "mysteryfile.mkv"
+
+
+def test_monitor_mode_future_skips_backlog(tmp_path, monkeypatch):
+    monkeypatch.setenv("EVENTS_FILE", str(tmp_path / "events.jsonl"))
+    (tmp_path / "lib" / "tvshows").mkdir(parents=True)
+    monkeypatch.setenv("LIBRARY_ROOT", str(tmp_path / "lib"))
+    import importlib
+    from cascade import config as cfgmod
+    importlib.reload(cfgmod)
+    from cascade import db
+    importlib.reload(db)
+    db.init()
+    from cascade import library as L
+    importlib.reload(L)
+    L.scan()
+    from cascade import tmdb as T
+    importlib.reload(T)
+    T.details = lambda tid, mt: {"seasons": 1, "title": "Show"}
+    T.episodes = lambda tid, n: [{"season": 1, "episode": e, "title": f"E{e}",
+                                  "air_date": f"2020-01-0{e}"} for e in range(1, 4)]
+    from cascade import series as S
+    importlib.reload(S)
+    sid = S.add_series(1, "Show", 2020, None, None)
+    assert S.reconcile(sid)["missing"] == 3
+    S.set_monitor_mode(sid, "future")
+    with db.connect() as c:
+        w = c.execute("SELECT COUNT(*) n FROM wanted WHERE series_id=? AND status='wanted'",
+                      (sid,)).fetchone()["n"]
+    assert w == 0  # backlog skipped

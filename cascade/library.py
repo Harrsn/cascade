@@ -61,6 +61,17 @@ def _detect_quality(name: str) -> str | None:
     return None
 
 
+def _record_unparsed(path: str, kind: str, reason: str) -> None:
+    try:
+        with db.connect() as c:
+            c.execute(
+                "INSERT INTO scan_unparsed (path, kind, reason) VALUES (?,?,?) "
+                "ON CONFLICT(path) DO UPDATE SET kind=excluded.kind, reason=excluded.reason",
+                (path, kind, reason))
+    except Exception:                            # noqa: BLE001
+        pass
+
+
 def _scan_tv(root: Path, stats: dict) -> None:
     tv = root / "tvshows"
     if not tv.exists():
@@ -98,6 +109,8 @@ def _scan_tv(root: Path, stats: dict) -> None:
         episode = info.get("episode")
         if not show or season is None or episode is None:
             stats["unparsed"] += 1
+            why = "no show name" if not show else "no season/episode number"
+            _record_unparsed(str(f), "tv", why)
             continue
         if isinstance(episode, list):
             episode = episode[0]
@@ -109,6 +122,7 @@ def _scan_tv(root: Path, stats: dict) -> None:
                 "ON CONFLICT(season, episode, show_name) DO UPDATE SET "
                 "quality=excluded.quality, path=excluded.path, size=excluded.size, mtime=excluded.mtime",
                 (show, int(season), int(episode), quality, str(f), st.st_size, st.st_mtime))
+            c.execute("DELETE FROM scan_unparsed WHERE path=?", (str(f),))
         stats["episodes"] += 1
 
 
@@ -135,6 +149,7 @@ def _scan_movies(root: Path, stats: dict) -> None:
         title = (info.get("title") or "").strip()
         if not title:
             stats["unparsed"] += 1
+            _record_unparsed(str(f), "movie", "no title parsed")
             continue
         year = info.get("year")
         quality = _detect_quality(f.name)
@@ -145,6 +160,7 @@ def _scan_movies(root: Path, stats: dict) -> None:
                 "ON CONFLICT(title, year) DO UPDATE SET "
                 "quality=excluded.quality, path=excluded.path, size=excluded.size, mtime=excluded.mtime",
                 (title, year, quality, str(f), st.st_size, st.st_mtime))
+            c.execute("DELETE FROM scan_unparsed WHERE path=?", (str(f),))
         stats["movies"] += 1
 
 
@@ -189,3 +205,18 @@ def have_movie(title: str, year: int | None = None) -> dict | None:
         else:
             r = c.execute("SELECT * FROM library_movies WHERE title=?", (title,)).fetchone()
     return dict(r) if r else None
+
+
+def scan_report() -> dict:
+    """Diagnostic: what the scanner couldn't place. Lists unparsed files (with
+    the reason and basename) grouped by kind, so the user can spot naming issues
+    or non-content files cluttering their library folders."""
+    with db.connect() as c:
+        rows = c.execute("SELECT path, kind, reason FROM scan_unparsed ORDER BY kind, path").fetchall()
+    import os as _os
+    tv, movie = [], []
+    for r in rows:
+        item = {"path": r["path"], "name": _os.path.basename(r["path"]), "reason": r["reason"]}
+        (tv if r["kind"] == "tv" else movie).append(item)
+    return {"unparsed_tv": tv, "unparsed_movies": movie,
+            "total": len(rows)}

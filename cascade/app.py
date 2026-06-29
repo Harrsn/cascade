@@ -614,6 +614,12 @@ def api_library_import(profile_id: int | None = Query(None)):
     return importer.import_library(profile_id)
 
 
+@app.get("/api/library/report")
+def api_library_report():
+    from . import library
+    return library.scan_report()
+
+
 @app.post("/api/library/scan")
 def api_library_scan():
     from . import library

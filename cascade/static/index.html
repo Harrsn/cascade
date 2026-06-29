@@ -257,6 +257,7 @@
     <div class="page-head">
       <h1>Shows</h1><span class="count" id="showsCount"></span>
       <div class="ph-actions">
+        <button class="btn ghost" id="showsReport" title="What didn't parse">scan report</button>
         <button class="btn ghost" id="showsImport">import library</button>
         <button class="btn ghost" id="showsScan">scan + hunt</button>
         <button class="btn" id="showsAdd">+ add show</button>
@@ -526,6 +527,7 @@ $("sdHunt").addEventListener("click",async()=>{
 });
 $("showsAdd").addEventListener("click",()=>addMediaForm("show"));
 $("showsScan").addEventListener("click",()=>scanHunt("show"));
+$("showsReport").addEventListener("click",openScanReport);
 $("showsImport").addEventListener("click",async()=>{
   if(!confirm("Scan your library folders and auto-monitor every show and movie found? This matches each against TMDb and may take a minute for a large library."))return;
   $("showsImport").disabled=true;$("showsImport").textContent="importing…";
@@ -785,6 +787,20 @@ $("settingsBtn").addEventListener("click",async()=>{
       REMOVE_ON_COMPLETE:$("st_rem").value,NOTIFY_URLS:$("st_notify").value.trim(),UI_THEME:$("st_theme").value,UI_ACCENT:$("st_accent").value}});
     toast("Settings saved.");closeModal();refreshMeta();});
 });
+
+// ============ scan report (diagnostic) ============
+async function openScanReport(){
+  openModal("Scan report",`<div class="muted">loading…</div>`);
+  try{
+    const r=await jget("/api/library/report");
+    if(!r.total){$("modalBody").innerHTML="<div class='empty'>Everything in your library parsed cleanly — nothing unmatched.</div>";return;}
+    const sect=(label,items)=>items.length?`<label class="fld">${label} (${items.length})</label>
+      <div style="max-height:200px;overflow-y:auto;border:1px solid var(--line);border-radius:7px;padding:8px">
+      ${items.map(x=>`<div class="hist-row"><span class="hn">${esc(x.name)}</span><span class="he">${esc(x.reason)}</span></div>`).join("")}</div>`:"";
+    $("modalBody").innerHTML=`<div class="hint" style="margin-bottom:10px">${r.total} file(s) couldn't be matched to a show or movie. These are usually oddly-named files, extras, or featurettes. Rename them to a standard pattern (e.g. <code>Show - S01E02.mkv</code>) and re-scan, or ignore them.</div>
+      ${sect("Unparsed TV files",r.unparsed_tv)}${sect("Unparsed movie files",r.unparsed_movies)}`;
+  }catch(_){$("modalBody").innerHTML="<div class='empty'>Couldn't load report.</div>";}
+}
 
 // ============ modal helpers ============
 function openModal(title,html){$("modalTitle").textContent=title;$("modalBody").innerHTML=html;$("modal").classList.add("show");}

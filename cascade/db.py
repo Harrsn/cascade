@@ -103,6 +103,14 @@ CREATE TABLE IF NOT EXISTS grabbed (
 
 -- ── Library awareness (Sonarr/Radarr-style) ──
 
+-- Files the scanner couldn't parse into a show/episode or movie (for the report).
+CREATE TABLE IF NOT EXISTS scan_unparsed (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    path        TEXT UNIQUE,
+    kind        TEXT,                 -- tv | movie
+    reason      TEXT
+);
+
 -- Monitored movies (Radarr-side): movies Cascade tracks and hunts if missing.
 CREATE TABLE IF NOT EXISTS movies (
     id           INTEGER PRIMARY KEY AUTOINCREMENT,

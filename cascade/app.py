@@ -6,6 +6,7 @@ the single-page UI.
 """
 from __future__ import annotations
 
+import os
 import json
 import shutil
 import logging
@@ -19,6 +20,8 @@ from pydantic import BaseModel
 from . import config as _cfg
 from .clients import make_client, DownloadClientError
 from . import search as searchmod
+from . import tmdb as tmdbmod
+from . import db
 from .notify import notify
 
 logging.basicConfig(level=logging.INFO,
@@ -29,6 +32,12 @@ app = FastAPI(title=_cfg.config.app_title)
 STATIC = Path(__file__).parent / "static"
 
 GB = 1024 ** 3
+
+# initialize the database on import (idempotent)
+try:
+    db.init()
+except Exception as e:                       # noqa: BLE001 - never block startup
+    log.warning("DB init failed: %s", e)
 
 
 def cfg():
@@ -289,6 +298,76 @@ def api_setup_save(w: WizardSave):
                                  "Is the /config volume writable?")
     log.info("Setup wizard saved config (%d keys).", len(clean))
     return {"status": "ok", "configured": cfg().configured()}
+
+
+@app.get("/api/meta/search")
+def api_meta_search(q: str = Query(..., min_length=1), kind: str = Query("multi")):
+    """TMDb title search -> poster results. Empty list if no key configured."""
+    return {"enabled": tmdbmod.enabled(), "results": tmdbmod.search(q, kind)}
+
+
+@app.get("/api/meta/details/{media_type}/{tmdb_id}")
+def api_meta_details(media_type: str, tmdb_id: int):
+    return tmdbmod.details(tmdb_id, media_type)
+
+
+# --- in-app settings editor (post-setup config changes) ---
+class SettingsPatch(BaseModel):
+    values: dict
+
+
+@app.get("/api/settings")
+def api_settings_get():
+    """Current effective settings the editor can change (non-secret + DB-stored)."""
+    from .config import WIZARD_KEYS
+    c = cfg()
+    env_view = {
+        "JACKETT_URL": c.jackett_url, "JACKETT_INDEXER": c.jackett_indexer,
+        "DOWNLOAD_CLIENT": c.client_kind, "CLIENT_URL": c.client_url,
+        "CLIENT_USER": c.client_user, "LIBRARY_ROOT": os.environ.get("LIBRARY_ROOT", ""),
+        "DOWNLOAD_DIR": c.download_dir, "NOTIFY_URLS": ",".join(c.notify_urls),
+        "UI_THEME": c.ui_theme, "UI_ACCENT": c.ui_accent, "APP_TITLE": c.app_title,
+        "REMOVE_ON_COMPLETE": os.environ.get("REMOVE_ON_COMPLETE", "0"),
+    }
+    return {"env": env_view, "db": db.all_settings(),
+            "tmdb_enabled": tmdbmod.enabled(),
+            "wizard_keys": sorted(WIZARD_KEYS)}
+
+
+@app.patch("/api/settings")
+def api_settings_patch(p: SettingsPatch):
+    """Update settings. Env-style keys persist to the wizard config file;
+    everything else (e.g. tmdb_key) goes to the DB settings table."""
+    from .config import save, WIZARD_KEYS
+    env_updates, db_updates = {}, {}
+    for k, v in p.values.items():
+        if k in WIZARD_KEYS:
+            env_updates[k] = v
+        else:
+            db_updates[k] = v
+    if env_updates:
+        try:
+            save(env_updates)
+        except OSError as e:
+            raise HTTPException(500, f"Couldn't persist config: {e}")
+    for k, v in db_updates.items():
+        db.set_setting(k, v)
+    log.info("Settings updated (%d env, %d db).", len(env_updates), len(db_updates))
+    return {"status": "ok"}
+
+
+# --- history + stats dashboard ---
+@app.get("/api/history")
+def api_history(limit: int = Query(100, ge=1, le=500)):
+    return {"history": db.recent_history(limit)}
+
+
+@app.get("/api/history/stats")
+def api_history_stats():
+    s = db.history_stats()
+    s["completed_bytes_h"] = searchmod.human_size(s["completed_bytes"])
+    return s
+
 
 
 @app.get("/health")

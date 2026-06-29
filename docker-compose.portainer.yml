@@ -1,0 +1,50 @@
+# Cascade — reuse existing Jackett + Transmission, full app cutover.
+#
+# Deploy in Portainer: Stacks → Add stack → "Repository" or "Web editor".
+# This builds the image from the cloned repo on the box (no GHCR needed).
+#
+# Assumes Jackett and Transmission are already running on this host. Cascade
+# reaches them over the host network or by host IP — see CLIENT_URL/JACKETT_URL.
+
+services:
+  cascade:
+    build:
+      context: /opt/cascade        # where you git-cloned the repo on the box
+      dockerfile: Dockerfile
+    image: cascade:local
+    container_name: cascade
+    restart: unless-stopped
+    ports:
+      - "8090:8088"                 # host 8090 -> container 8088 (old app stays on 8088)
+    environment:
+      # --- indexer (your existing Jackett) ---
+      JACKETT_URL: "http://JACKETT_HOST:9117"
+      JACKETT_API_KEY: "YOUR_JACKETT_API_KEY"
+      JACKETT_INDEXER: "all"
+      # --- download client (your existing Transmission) ---
+      DOWNLOAD_CLIENT: "transmission"
+      CLIENT_URL: "http://TRANSMISSION_HOST:9091/transmission/rpc"
+      CLIENT_USER: "harrsn"
+      CLIENT_PASS: "YOUR_TRANSMISSION_PASS"
+      # --- paths (mounted below) ---
+      LIBRARY_ROOT: "/library"
+      DOWNLOAD_DIR: "/downloads"
+      DISK_PATH: "/downloads"
+      EVENTS_FILE: "/config/events.jsonl"
+      # --- behavior ---
+      REMOVE_ON_COMPLETE: "1"
+      # --- notifications (optional) ---
+      NOTIFY_URLS: ""
+      NOTIFY_ON: "completed,sorted,failed"
+      # --- UI ---
+      UI_THEME: "dark"
+      UI_ACCENT: "blue"
+      APP_TITLE: "Cascade"
+    volumes:
+      - /opt/cascade-config:/config
+      - /mnt/nas/media:/library
+      - /var/lib/transmission-daemon/downloads:/downloads
+    # If Jackett/Transmission are reachable only on localhost, the simplest fix
+    # is host networking (then JACKETT_HOST/TRANSMISSION_HOST = 127.0.0.1 and the
+    # ports: block is ignored). Uncomment to use it:
+    # network_mode: host

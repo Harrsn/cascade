@@ -221,3 +221,29 @@ def test_config_save_whitelist(tmp_path, monkeypatch):
     body = (tmp_path / "cascade.env").read_text()
     assert "EVIL" not in body
     assert "JACKETT_INDEXER=1337x" in body
+
+
+# ---------------- content classification ----------------
+def test_classify_game_by_platform():
+    from cascade.classify import classify, dest_folder
+    r = classify("Lego Harry Potter Years 1-4 PS3", 1000)
+    assert r["type"] == "game" and r["platform"] == "PS3"
+    assert dest_folder("game") == "games"
+
+
+def test_classify_movie_and_tv_by_category():
+    from cascade.classify import classify
+    assert classify("Dune 2024 1080p BluRay", 2000)["type"] == "movie"
+    assert classify("The Office S03E07", 5000)["type"] == "tv"
+
+
+def test_classify_game_by_scene_group_no_category():
+    from cascade.classify import classify
+    r = classify("Cyberpunk 2077 v2.1 REPACK FitGirl", None)
+    assert r["type"] == "game"
+
+
+def test_classify_switch_and_console():
+    from cascade.classify import classify
+    assert classify("Super Mario Odyssey NSW", None)["platform"] == "Nintendo Switch"
+    assert classify("Elden Ring PS5", None)["type"] == "game"

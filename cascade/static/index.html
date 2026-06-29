@@ -259,6 +259,9 @@
   .switch span:before{content:"";position:absolute;height:12px;width:12px;left:3px;bottom:3px;background:#fff;border-radius:50%;transition:.2s;}
   .switch input:checked+span{background:var(--accent);}
   .switch input:checked+span:before{transform:translateX(16px);}
+  /* library progress bar */
+  .lib-bar{height:5px;background:var(--line-hi);border-radius:3px;margin-top:8px;overflow:hidden;}
+  .lib-bar i{display:block;height:100%;background:var(--good);border-radius:3px;transition:width .3s;}
   @media (max-width:640px){td.trk,th.trk{display:none;}}
 </style>
 </head>
@@ -268,6 +271,7 @@
     <h1>cascade<span class="dot">·</span></h1>
     <span class="sub">search &amp; manage</span>
     <span class="spacer"></span>
+    <button class="activity-btn" id="libraryBtn" title="Library &amp; monitored shows">📚</button>
     <button class="activity-btn" id="subsBtn" title="Auto-grab subscriptions">📡</button>
     <button class="activity-btn" id="profilesBtn" title="Quality profiles">🎯</button>
     <button class="activity-btn" id="statsBtn" title="History &amp; stats">📊</button>
@@ -351,6 +355,19 @@
     <div class="modal-head"><h2>Quality profiles</h2><button class="modal-close" id="profClose">×</button></div>
     <div class="modal-body" id="profBody"></div>
     <div class="modal-foot"><button class="wiz-btn" id="profNew">+ new profile</button></div>
+  </div>
+</div>
+
+<!-- library & monitored shows modal -->
+<div class="modal-overlay" id="libOverlay">
+  <div class="modal">
+    <div class="modal-head"><h2>Library &amp; monitored shows</h2><button class="modal-close" id="libClose">×</button></div>
+    <div class="modal-body" id="libBody"></div>
+    <div class="modal-foot" style="display:flex;justify-content:space-between;align-items:center">
+      <span id="libStatus" style="font-size:11px;color:var(--muted)"></span>
+      <span><button class="wiz-btn ghost" id="libScan">scan + hunt now</button>
+      <button class="wiz-btn" id="libAdd">+ add show</button></span>
+    </div>
   </div>
 </div>
 
@@ -1124,6 +1141,89 @@ $("subsCheck").addEventListener("click",async()=>{
     toast(`Checked ${r.checked} · grabbed ${r.grabbed}.`); await openSubs();
   }catch(_){ toast("Check failed","err"); }
   finally{ $("subsCheck").disabled=false; $("subsCheck").textContent="check now"; }
+});
+
+/* ---------------- library & monitored shows ---------------- */
+let libSeries=[], libProfiles=[];
+async function openLibrary(){
+  $("libOverlay").classList.add("show");
+  $("libBody").innerHTML="<div style='color:var(--muted)'>loading…</div>";
+  try{
+    [libSeries,libProfiles]=await Promise.all([
+      fetch("/api/series").then(r=>r.json()).then(d=>d.series||[]),
+      fetch("/api/profiles").then(r=>r.json()).then(d=>d.profiles||[]),
+    ]);
+    renderLibrary();
+  }catch(_){ $("libBody").innerHTML="<div style='color:var(--bad)'>Couldn't load library.</div>"; }
+}
+function renderLibrary(){
+  if(!libSeries.length){ $("libBody").innerHTML="<div style='color:var(--muted);padding:10px 0'>No monitored shows yet. Add a show and Cascade will track its episodes, scan your library, and hunt the missing ones.</div>"; return; }
+  $("libBody").innerHTML=libSeries.map(s=>{
+    const pct=s.total?Math.round(s.have/s.total*100):0;
+    const prof=libProfiles.find(p=>p.id===s.profile_id);
+    return `<div class="prof-card">
+      <div class="prof-head"><b>${esc(s.title)}${s.year?` (${s.year})`:''}</b>
+        <span class="prof-actions"><button class="link-btn danger" data-libdel="${s.id}">remove</button></span></div>
+      <div class="prof-meta">
+        <span class="muted">${s.have}/${s.total} episodes</span>
+        ${s.wanted?`<span class="tag ctype tv">${s.wanted} wanted</span>`:'<span class="muted">· complete</span>'}
+        ${prof?`<span class="muted">· ${esc(prof.name)}</span>`:''}
+      </div>
+      <div class="lib-bar"><i style="width:${pct}%"></i></div>
+    </div>`;
+  }).join("");
+  $("libBody").querySelectorAll("[data-libdel]").forEach(b=>b.addEventListener("click",()=>delSeries(+b.dataset.libdel)));
+}
+async function delSeries(id){ try{ await fetch(`/api/series/${id}`,{method:"DELETE"}); toast("Removed."); await openLibrary(); }catch(_){ toast("Remove failed","err"); } }
+
+function libAddForm(){
+  const opts=`<option value="">no profile (best-seeded)</option>`+libProfiles.map(p=>`<option value="${p.id}">${esc(p.name)}</option>`).join("");
+  $("libBody").innerHTML=`
+    <div class="set-row"><label>Search for a show (TMDb)</label>
+      <input id="lib_q" placeholder="e.g. the office" autocomplete="off"></div>
+    <div class="set-row"><label>Quality profile</label><select id="lib_prof">${opts}</select></div>
+    <div id="lib_results" class="poster-grid" style="margin-top:8px"></div>
+    <div style="margin-top:8px"><button class="wiz-btn ghost" id="lib_cancel">cancel</button></div>`;
+  $("lib_cancel").addEventListener("click",renderLibrary);
+  let t=null;
+  $("lib_q").addEventListener("input",()=>{ clearTimeout(t); t=setTimeout(libSearch,400); });
+  $("lib_q").focus();
+}
+async function libSearch(){
+  const q=$("lib_q").value.trim(); if(!q){ $("lib_results").innerHTML=""; return; }
+  try{
+    const d=await (await fetch(`/api/meta/search?q=${encodeURIComponent(q)}&kind=tv`)).json();
+    const tv=(d.results||[]).filter(r=>r.media_type==='tv');
+    if(!tv.length){ $("lib_results").innerHTML="<div style='color:var(--muted)'>No shows found (need a TMDb key in settings).</div>"; return; }
+    $("lib_results").innerHTML=tv.map(r=>`
+      <div class="poster" data-tmdb="${r.tmdb_id}" data-title="${esc(r.title)}" data-year="${esc(r.year||'')}" data-poster="${esc(r.poster||'')}">
+        <div class="img" style="${r.poster?`background-image:url('${esc(r.poster)}')`:''}">${r.poster?'':'no image'}</div>
+        <div class="meta"><div class="pt">${esc(r.title)}</div><div class="py"><span>${esc(r.year||'')}</span></div></div>
+      </div>`).join("");
+    $("lib_results").querySelectorAll(".poster").forEach(p=>p.addEventListener("click",()=>addShow(p.dataset)));
+  }catch(_){ $("lib_results").innerHTML="<div style='color:var(--bad)'>Search failed.</div>"; }
+}
+async function addShow(d){
+  const body={tmdb_id:+d.tmdb,title:d.title,year:d.year?+d.year:null,poster:d.poster||null,
+    profile_id:$("lib_prof").value?+$("lib_prof").value:null};
+  try{ await fetch("/api/series",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
+    toast(`Now monitoring ${d.title}.`); await openLibrary();
+  }catch(_){ toast("Couldn't add show","err"); }
+}
+$("libraryBtn").addEventListener("click",openLibrary);
+$("libClose").addEventListener("click",()=>$("libOverlay").classList.remove("show"));
+$("libOverlay").addEventListener("click",e=>{ if(e.target.id==="libOverlay") $("libOverlay").classList.remove("show"); });
+$("libAdd").addEventListener("click",libAddForm);
+$("libScan").addEventListener("click",async()=>{
+  $("libScan").disabled=true; $("libScan").textContent="scanning…";
+  try{
+    await fetch("/api/library/scan",{method:"POST"});
+    const rec=await (await fetch("/api/library/reconcile",{method:"POST"})).json();
+    const chk=await (await fetch("/api/subscriptions/check",{method:"POST"})).json();
+    toast(`Reconciled: ${rec.missing||0} missing, ${rec.upgrades||0} upgrades · grabbed ${chk.grabbed||0}.`);
+    await openLibrary();
+  }catch(_){ toast("Scan failed","err"); }
+  finally{ $("libScan").disabled=false; $("libScan").textContent="scan + hunt now"; }
 });
 
 async function refreshMeta(){

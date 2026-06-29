@@ -883,6 +883,7 @@ async function populateIndexers(current){
     sel.innerHTML=`<option value="${esc(current)}" selected>${esc(current)}</option><option value="all">all</option>`;
     hint.textContent="Couldn't reach Jackett to list indexers; showing current value.";
   }
+}
 $("settingsBtn").addEventListener("click",openSettings);
 $("setClose").addEventListener("click",()=>$("setOverlay").classList.remove("show"));
 $("setOverlay").addEventListener("click",e=>{ if(e.target.id==="setOverlay") $("setOverlay").classList.remove("show"); });

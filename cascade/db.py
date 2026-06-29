@@ -100,6 +100,74 @@ CREATE TABLE IF NOT EXISTS grabbed (
     title       TEXT,                 -- release title we grabbed (dedupe key)
     UNIQUE(title)
 );
+
+-- ── Library awareness (Sonarr/Radarr-style) ──
+
+-- Monitored series: shows Cascade tracks and hunts missing episodes for.
+CREATE TABLE IF NOT EXISTS series (
+    id           INTEGER PRIMARY KEY AUTOINCREMENT,
+    tmdb_id      INTEGER UNIQUE,
+    title        TEXT NOT NULL,
+    year         INTEGER,
+    poster       TEXT,
+    profile_id   INTEGER,
+    monitored    INTEGER DEFAULT 1,
+    total_seasons INTEGER DEFAULT 0,
+    added_ts     TEXT,
+    last_refresh TEXT
+);
+
+-- Canonical episode list per series (what SHOULD exist), from TMDb.
+CREATE TABLE IF NOT EXISTS series_episodes (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    series_id   INTEGER NOT NULL,
+    season      INTEGER NOT NULL,
+    episode     INTEGER NOT NULL,
+    title       TEXT,
+    air_date    TEXT,
+    UNIQUE(series_id, season, episode),
+    FOREIGN KEY(series_id) REFERENCES series(id) ON DELETE CASCADE
+);
+
+-- What we actually HAVE on disk for tracked shows (from the library scan).
+CREATE TABLE IF NOT EXISTS library_episodes (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    series_id   INTEGER,
+    show_name   TEXT,                 -- parsed name (for unmatched-to-series files)
+    season      INTEGER NOT NULL,
+    episode     INTEGER NOT NULL,
+    quality     TEXT,                 -- detected resolution, e.g. 1080p
+    path        TEXT,
+    size        INTEGER DEFAULT 0,
+    mtime       REAL DEFAULT 0,
+    UNIQUE(season, episode, show_name)
+);
+
+-- Movies present on disk.
+CREATE TABLE IF NOT EXISTS library_movies (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    title       TEXT NOT NULL,
+    year        INTEGER,
+    quality     TEXT,
+    path        TEXT,
+    size        INTEGER DEFAULT 0,
+    mtime       REAL DEFAULT 0,
+    UNIQUE(title, year)
+);
+
+-- The computed wants: missing or upgrade-eligible items the hunter targets.
+CREATE TABLE IF NOT EXISTS wanted (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    kind        TEXT NOT NULL,        -- episode | movie
+    series_id   INTEGER,
+    season      INTEGER,
+    episode     INTEGER,
+    title       TEXT,
+    reason      TEXT,                 -- missing | upgrade
+    status      TEXT DEFAULT 'wanted',-- wanted | searching | grabbed | unavailable
+    last_search TEXT,
+    UNIQUE(kind, series_id, season, episode, title)
+);
 """
 
 

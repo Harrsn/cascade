@@ -28,7 +28,26 @@ logging.basicConfig(level=logging.INFO,
                     format="%(asctime)s %(levelname)s %(name)s %(message)s")
 log = logging.getLogger("cascade")
 
-app = FastAPI(title=_cfg.config.app_title)
+from contextlib import asynccontextmanager
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # start the background auto-grab scheduler
+    try:
+        from . import scheduler
+        scheduler.start()
+    except Exception as e:                       # noqa: BLE001 - never block startup
+        log.warning("Scheduler failed to start: %s", e)
+    yield
+    try:
+        from . import scheduler
+        scheduler.stop()
+    except Exception:                            # noqa: BLE001
+        pass
+
+
+app = FastAPI(title=_cfg.config.app_title, lifespan=lifespan)
 STATIC = Path(__file__).parent / "static"
 
 GB = 1024 ** 3
@@ -462,6 +481,53 @@ def api_search_best(q: str = Query(..., min_length=1), cat: str = Query("all"),
     ranked = prof.rank(results, profile)
     return {"query": q, "profile": profile["name"], "best": ranked[0] if ranked else None,
             "ranked": ranked, "considered": len(results), "qualified": len(ranked)}
+
+
+# --- subscriptions (RSS auto-grab) ---
+class SubscriptionBody(BaseModel):
+    title: str
+    query: str = ""
+    media_type: str = "tv"
+    profile_id: int | None = None
+    enabled: bool = True
+
+
+@app.get("/api/subscriptions")
+def api_subs_list():
+    return {"subscriptions": db.list_subscriptions()}
+
+
+@app.post("/api/subscriptions")
+def api_subs_create(s: SubscriptionBody):
+    sid = db.create_subscription(s.title, s.query or s.title, s.media_type, s.profile_id)
+    return {"status": "ok", "id": sid}
+
+
+@app.put("/api/subscriptions/{sid}")
+def api_subs_update(sid: int, s: SubscriptionBody):
+    db.update_subscription(sid, title=s.title, query=s.query or s.title,
+                           media_type=s.media_type, profile_id=s.profile_id,
+                           enabled=1 if s.enabled else 0)
+    return {"status": "ok"}
+
+
+@app.delete("/api/subscriptions/{sid}")
+def api_subs_delete(sid: int):
+    db.delete_subscription(sid)
+    return {"status": "ok"}
+
+
+@app.post("/api/subscriptions/check")
+def api_subs_check():
+    """Run all enabled subscriptions now (the 'check now' button)."""
+    from . import scheduler
+    return scheduler.run_once()
+
+
+@app.get("/api/subscriptions/status")
+def api_subs_status():
+    from . import scheduler
+    return {"last_run": scheduler.last_run(), "interval_seconds": scheduler.INTERVAL}
 
 
 @app.get("/health")

@@ -129,6 +129,72 @@ def test_api_config(client_app):
     assert cfg["title"] and "accent" in cfg
 
 
+# ---------------- database ----------------
+def test_db_settings_and_history(tmp_path, monkeypatch):
+    monkeypatch.setenv("EVENTS_FILE", str(tmp_path / "events.jsonl"))
+    import importlib
+    from cascade import config as cfgmod
+    importlib.reload(cfgmod)
+    from cascade import db
+    importlib.reload(db)
+    db.init()
+    db.set_setting("k", {"a": 1})
+    assert db.get_setting("k") == {"a": 1}
+    db.add_history("completed", "X", "sorted", 1000)
+    assert len(db.recent_history()) == 1
+    s = db.history_stats()
+    assert s["completed_count"] == 1 and s["completed_bytes"] == 1000
+
+
+def test_db_default_profile(tmp_path, monkeypatch):
+    monkeypatch.setenv("EVENTS_FILE", str(tmp_path / "events.jsonl"))
+    import importlib
+    from cascade import config as cfgmod
+    importlib.reload(cfgmod)
+    from cascade import db
+    importlib.reload(db)
+    db.init()
+    with db.connect() as c:
+        n = c.execute("SELECT COUNT(*) AS n FROM profiles").fetchone()["n"]
+    assert n >= 1
+
+
+# ---------------- tmdb ----------------
+def test_tmdb_disabled_without_key(tmp_path, monkeypatch):
+    monkeypatch.setenv("EVENTS_FILE", str(tmp_path / "events.jsonl"))
+    monkeypatch.delenv("TMDB_API_KEY", raising=False)
+    import importlib
+    from cascade import config as cfgmod
+    importlib.reload(cfgmod)
+    from cascade import db
+    importlib.reload(db)
+    db.init()
+    from cascade import tmdb
+    importlib.reload(tmdb)
+    assert not tmdb.enabled()
+    assert tmdb.search("dune") == []
+
+
+def test_tmdb_parse_and_cache(tmp_path, monkeypatch):
+    monkeypatch.setenv("EVENTS_FILE", str(tmp_path / "events.jsonl"))
+    import importlib
+    from cascade import config as cfgmod
+    importlib.reload(cfgmod)
+    from cascade import db
+    importlib.reload(db)
+    db.init()
+    from cascade import tmdb
+    importlib.reload(tmdb)
+    db.set_setting("tmdb_key", "k")
+    tmdb._get = lambda path, params: {"results": [
+        {"id": 1, "media_type": "movie", "title": "Dune", "release_date": "2021-01-01",
+         "poster_path": "/p.jpg", "vote_average": 8.0},
+        {"id": 2, "media_type": "person", "name": "x"}]}
+    res = tmdb.search("dune")
+    assert len(res) == 1 and res[0]["year"] == "2021"
+    assert res[0]["search_query"] == "Dune 2021"
+
+
 # ---------------- setup wizard ----------------
 def test_config_save_reload(tmp_path, monkeypatch):
     monkeypatch.setenv("CASCADE_CONFIG_FILE", str(tmp_path / "cascade.env"))

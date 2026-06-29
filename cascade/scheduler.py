@@ -118,11 +118,20 @@ def hunt_wanted() -> dict:
     grabbed = 0
     details = []
     for w in wanted:
-        title = w.get("series_title") or ""
-        season, episode = w.get("season"), w.get("episode")
-        if not title or season is None or episode is None:
+        kind = w.get("kind", "episode")
+        if kind == "movie":
+            query = w.get("title") or ""
+            series_id = w.get("series_id")  # for movies this is the movie id
+            profile = _load_profile_for_movie(series_id)
+        else:
+            title = w.get("series_title") or ""
+            season, episode = w.get("season"), w.get("episode")
+            if not title or season is None or episode is None:
+                continue
+            query = f"{title} S{int(season):02d}E{int(episode):02d}"
+            profile = _load_profile_for_series(w.get("series_id"))
+        if not query:
             continue
-        query = f"{title} S{int(season):02d}E{int(episode):02d}"
         res = {"want": query, "reason": w.get("reason"), "grabbed": None, "error": None}
         try:
             results = searchmod.search(
@@ -134,8 +143,6 @@ def hunt_wanted() -> dict:
             continue
 
         fresh = [r for r in results if not db.already_grabbed(r["title"])]
-        # rank by the series' profile
-        profile = _load_profile_for_series(w.get("series_id"))
         if profile:
             ranked = prof.rank(fresh, profile)
         else:
@@ -155,7 +162,6 @@ def hunt_wanted() -> dict:
             res["grabbed"] = pick["title"]
             grabbed += 1
             db.add_history("added", pick["title"], f"hunt: {query} ({w.get('reason')})")
-            # mark the wanted row as grabbed
             with db.connect() as c:
                 c.execute("UPDATE wanted SET status='grabbed', last_search=? WHERE id=?",
                           (datetime.now().isoformat(timespec="seconds"), w["id"]))
@@ -166,6 +172,14 @@ def hunt_wanted() -> dict:
                 c.execute("DELETE FROM grabbed WHERE title=?", (pick["title"],))
         details.append(res)
     return {"wanted": len(wanted), "grabbed": grabbed, "details": details}
+
+
+def _load_profile_for_movie(movie_id):
+    if not movie_id:
+        return None
+    with db.connect() as c:
+        row = c.execute("SELECT profile_id FROM movies WHERE id=?", (movie_id,)).fetchone()
+    return _load_profile(row["profile_id"]) if row else None
 
 
 def _load_profile_for_series(series_id):
@@ -193,9 +207,10 @@ def run_once() -> dict:
     # 2. library-aware pipeline
     lib_summary = {}
     try:
-        from . import library, series as series_mod
+        from . import library, series as series_mod, movies as movies_mod
         library.scan()
         recon = series_mod.reconcile_all()
+        movies_mod.reconcile_all()
         hunt = hunt_wanted()
         grabbed += hunt.get("grabbed", 0)
         lib_summary = {"reconcile": recon, "hunt_grabbed": hunt.get("grabbed", 0),

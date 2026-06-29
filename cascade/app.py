@@ -605,6 +605,35 @@ def api_wanted():
     return {"wanted": series_mod.list_wanted()}
 
 
+# --- monitored movies (Radarr-side) ---
+class MovieAdd(BaseModel):
+    tmdb_id: int
+    title: str
+    year: int | None = None
+    poster: str | None = None
+    profile_id: int | None = None
+
+
+@app.get("/api/movies")
+def api_movies_list():
+    from . import movies as movies_mod
+    return {"movies": movies_mod.list_movies()}
+
+
+@app.post("/api/movies")
+def api_movies_add(m: MovieAdd):
+    from . import movies as movies_mod
+    mid = movies_mod.add_movie(m.tmdb_id, m.title, m.year, m.poster, m.profile_id)
+    return {"status": "ok", "id": mid}
+
+
+@app.delete("/api/movies/{mid}")
+def api_movies_delete(mid: int):
+    from . import movies as movies_mod
+    movies_mod.delete_movie(mid)
+    return {"status": "ok"}
+
+
 @app.get("/health")
 def health():
     status = {"indexer": "unknown", "client": "unknown"}

@@ -285,7 +285,14 @@
     <div class="page-head">
       <button class="btn ghost" id="sdBack">← shows</button>
       <h1 id="sdTitle"></h1><span class="count" id="sdCount"></span>
-      <div class="ph-actions"><button class="btn" id="sdHunt">hunt missing</button></div>
+      <div class="ph-actions">
+        <select id="sdMonitor" title="What to hunt for this show" style="margin-right:8px">
+          <option value="all">monitor: all episodes</option>
+          <option value="future">monitor: future only</option>
+          <option value="none">monitor: paused</option>
+        </select>
+        <button class="btn" id="sdHunt">hunt missing</button>
+      </div>
     </div>
     <div id="sdBody"></div>
   </section>
@@ -481,6 +488,7 @@ async function openShowDetail(sid){
     const d=await jget(`/api/series/${sid}/episodes`);
     $("sdTitle").textContent=d.series.title+(d.series.year?` (${d.series.year})`:"");
     $("sdCount").textContent=`${d.have}/${d.total} episodes`;
+    if($("sdMonitor"))$("sdMonitor").value=d.series.monitor_mode||"all";
     $("sdBody").innerHTML=d.seasons.map(s=>`
       <div class="season">
         <div class="season-head">Season ${s.season} <span class="muted">${s.have}/${s.total}</span></div>
@@ -494,6 +502,12 @@ async function openShowDetail(sid){
   }catch(_){$("sdBody").innerHTML="<div class='empty'>Couldn't load episodes.</div>";}
 }
 $("sdBack").addEventListener("click",()=>{showPage("shows");document.querySelectorAll(".navlink").forEach(l=>l.classList.toggle("on",l.dataset.page==="shows"));loadShows();});
+$("sdMonitor").addEventListener("change",async()=>{
+  if(!sdCurrentId)return;
+  try{await jsend(`/api/series/${sdCurrentId}/monitor?mode=${$("sdMonitor").value}`,"POST");
+    toast("Monitoring updated.");openShowDetail(sdCurrentId);}
+  catch(_){toast("Couldn't update","err");}
+});
 $("sdHunt").addEventListener("click",async()=>{
   if(!sdCurrentId)return;$("sdHunt").disabled=true;$("sdHunt").textContent="hunting…";
   try{const r=await jsend(`/api/series/${sdCurrentId}/hunt`,"POST");toast(`Grabbed ${r.grabbed||0} (cap applies).`);openShowDetail(sdCurrentId);}

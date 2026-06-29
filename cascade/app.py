@@ -581,6 +581,13 @@ def api_series_delete(sid: int):
     return {"status": "ok"}
 
 
+@app.post("/api/series/{sid}/monitor")
+def api_series_monitor(sid: int, mode: str = Query("all")):
+    from . import series as series_mod
+    series_mod.set_monitor_mode(sid, mode)
+    return {"status": "ok", "mode": mode}
+
+
 @app.get("/api/series/{sid}/episodes")
 def api_series_episodes(sid: int):
     from . import series as series_mod

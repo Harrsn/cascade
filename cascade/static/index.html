@@ -297,6 +297,16 @@
     <div id="sdBody"></div>
   </section>
 
+  <!-- ============ MOVIE DETAIL PAGE ============ -->
+  <section class="page" id="page-moviedetail">
+    <div class="page-head">
+      <button class="btn ghost" id="mdBack">← movies</button>
+      <h1 id="mdTitle"></h1>
+      <div class="ph-actions"><button class="btn" id="mdSearch">search releases</button></div>
+    </div>
+    <div id="mdBody"></div>
+  </section>
+
   <!-- ============ AUTO-GRAB PAGE ============ -->
   <section class="page" id="page-subs">
     <div class="page-head">
@@ -479,7 +489,7 @@ function renderShows(){
 
 // show detail view
 let sdCurrentId=null;
-function showPage(page){PAGES.concat(["showdetail"]).forEach(p=>{const el=$("page-"+p);if(el)el.classList.toggle("on",p===page);});}
+function showPage(page){PAGES.concat(["showdetail","moviedetail"]).forEach(p=>{const el=$("page-"+p);if(el)el.classList.toggle("on",p===page);});}
 async function openShowDetail(sid){
   sdCurrentId=sid;showPage("showdetail");
   document.querySelectorAll(".navlink").forEach(l=>l.classList.toggle("on",l.dataset.page==="shows"));
@@ -538,15 +548,66 @@ function renderMovies(){
   $("moviesEmpty").hidden=moviesData.length>0;
   $("moviesGrid").innerHTML=moviesData.map(m=>{
     const prof=profilesCache.find(p=>p.id===m.profile_id);
-    return `<div class="lcard">
+    return `<div class="lcard" data-mid="${m.id}" style="cursor:pointer">
       <div class="pimg" style="${m.poster?`background-image:url('${esc(m.poster)}')`:''}">${m.poster?'':'no art'}</div>
       <div class="body"><div class="lt">${esc(m.title)}</div><div class="ly">${m.year||''}</div>
         <div class="lmeta"><span class="pill ${m.status==='have'?'have':'want'}">${m.status==='have'?'in library':'wanted'}</span>
           ${prof?`<span class="muted">${esc(prof.name)}</span>`:''}</div>
         <div class="lact"><button class="link-btn danger" data-del="${m.id}">remove</button></div>
       </div></div>`;}).join("");
-  $("moviesGrid").querySelectorAll("[data-del]").forEach(b=>b.addEventListener("click",async()=>{await jsend(`/api/movies/${b.dataset.del}`,"DELETE");toast("Removed.");loadMovies();}));
+  $("moviesGrid").querySelectorAll("[data-del]").forEach(b=>b.addEventListener("click",async e=>{e.stopPropagation();await jsend(`/api/movies/${b.dataset.del}`,"DELETE");toast("Removed.");loadMovies();}));
+  $("moviesGrid").querySelectorAll(".lcard").forEach(card=>card.addEventListener("click",e=>{
+    if(e.target.closest("[data-del]"))return;const id=+card.dataset.mid;if(id)openMovieDetail(id);}));
 }
+
+// movie detail view
+let mdCurrentId=null;
+async function openMovieDetail(mid){
+  mdCurrentId=mid;showPage("moviedetail");
+  document.querySelectorAll(".navlink").forEach(l=>l.classList.toggle("on",l.dataset.page==="movies"));
+  $("mdBody").innerHTML="<div class='muted'>loading…</div>";$("mdTitle").textContent="";
+  try{
+    const d=await jget(`/api/movies/${mid}/detail`);
+    const m=d.movie,f=d.file,meta=d.meta||{};
+    $("mdTitle").textContent=m.title+(m.year?` (${m.year})`:"");
+    const fileBlock=f?`<div class="prof-card"><b>In library</b>
+      <div class="prof-meta"><span class="pill have">have</span>
+      ${f.quality?`<span class="tag res">${esc(f.quality)}</span>`:'<span class="muted">unknown quality</span>'}
+      <span class="muted">· ${human(f.size||0)}</span></div>
+      <div class="hint" style="margin-top:6px;word-break:break-all">${esc(f.path||'')}</div></div>`
+      :`<div class="prof-card"><b>Not in library</b> <span class="pill want">wanted</span>
+      <div class="hint">Use "search releases" to find and grab this movie.</div></div>`;
+    $("mdBody").innerHTML=`
+      <div style="display:flex;gap:18px;flex-wrap:wrap">
+        <div class="pimg" style="width:140px;height:210px;flex-shrink:0;${m.poster?`background-image:url('${esc(m.poster)}')`:''}">${m.poster?'':'no art'}</div>
+        <div style="flex:1;min-width:240px">
+          ${meta.rating?`<div class="muted" style="margin-bottom:6px">★ ${meta.rating}${meta.runtime?` · ${meta.runtime} min`:''}${(meta.genres||[]).length?` · ${meta.genres.join(', ')}`:''}</div>`:''}
+          <p style="font-size:13px;line-height:1.6">${esc(meta.overview||'No description available.')}</p>
+          ${fileBlock}
+        </div>
+      </div>
+      <div id="mdResults" style="margin-top:16px"></div>`;
+  }catch(_){$("mdBody").innerHTML="<div class='empty'>Couldn't load movie.</div>";}
+}
+$("mdBack").addEventListener("click",()=>{showPage("movies");document.querySelectorAll(".navlink").forEach(l=>l.classList.toggle("on",l.dataset.page==="movies"));loadMovies();});
+$("mdSearch").addEventListener("click",async()=>{
+  if(!mdCurrentId)return;$("mdSearch").disabled=true;$("mdSearch").textContent="searching…";
+  try{
+    const d=await jget(`/api/movies/${mdCurrentId}/detail`);
+    const m=d.movie;const q=m.title+(m.year?` ${m.year}`:"");
+    const sr=await jget(`/api/search?q=${encodeURIComponent(q)}&cat=movies&limit=40`);
+    const list=sr.results||[];
+    $("mdResults").innerHTML=`<h2 style="font-size:15px;margin:0 0 8px">Releases for "${esc(q)}"</h2>`+
+      (list.length?`<table><thead><tr><th>title</th><th>size</th><th>health</th><th></th></tr></thead><tbody>`+
+      list.map((r,i)=>`<tr><td class="title">${esc(r.title)}${badgeHtml(r.badges)}</td>
+        <td>${esc(r.size_h||human(r.size))}</td><td>${healthHtml(r)}</td>
+        <td><button class="addbtn" data-madd="${i}">add</button></td></tr>`).join("")+`</tbody></table>`
+      :"<div class='empty'>No releases found.</div>");
+    window._mdReleases=list;
+    $("mdResults").querySelectorAll("[data-madd]").forEach(b=>b.addEventListener("click",()=>addTorrent(window._mdReleases[+b.dataset.madd],b)));
+  }catch(_){toast("Search failed","err");}
+  finally{$("mdSearch").disabled=false;$("mdSearch").textContent="search releases";}
+});
 $("moviesAdd").addEventListener("click",()=>addMediaForm("movie"));
 $("moviesScan").addEventListener("click",()=>scanHunt("movie"));
 $("moviesImport").addEventListener("click",async()=>{

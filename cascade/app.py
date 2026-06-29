@@ -654,6 +654,12 @@ def api_movies_add(m: MovieAdd):
     return {"status": "ok", "id": mid}
 
 
+@app.get("/api/movies/{mid}/detail")
+def api_movie_detail(mid: int):
+    from . import movies as movies_mod
+    return movies_mod.movie_detail(mid)
+
+
 @app.delete("/api/movies/{mid}")
 def api_movies_delete(mid: int):
     from . import movies as movies_mod

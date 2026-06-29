@@ -653,7 +653,7 @@ $("moviesImport").addEventListener("click",async()=>{
 
 async function scanHunt(kind){
   const btn=kind==="show"?$("showsScan"):$("moviesScan");btn.disabled=true;btn.textContent="scanning…";
-  try{await jsend("/api/library/scan","POST");const rec=await jsend("/api/library/reconcile","POST");const chk=await jsend("/api/subscriptions/check","POST");
+  try{await jsend("/api/library/scan?force=true","POST");const rec=await jsend("/api/library/reconcile","POST");const chk=await jsend("/api/subscriptions/check","POST");
     toast(`Reconciled · grabbed ${chk.grabbed||0}.`);kind==="show"?loadShows():loadMovies();}
   catch(_){toast("Scan failed","err");}
   finally{btn.disabled=false;btn.textContent="scan + hunt";}

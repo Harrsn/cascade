@@ -698,9 +698,9 @@ def api_library_report():
 
 
 @app.post("/api/library/scan")
-def api_library_scan():
+def api_library_scan(force: bool = False):
     from . import library
-    return library.scan()
+    return library.scan(force=force)
 
 
 @app.post("/api/library/reconcile")

@@ -97,7 +97,7 @@ def _record_unparsed(path: str, kind: str, reason: str) -> None:
         pass
 
 
-def _scan_tv(root: Path, stats: dict) -> None:
+def _scan_tv(root: Path, stats: dict, force: bool = False) -> None:
     tv = root / "tvshows"
     if not tv.exists():
         return
@@ -114,7 +114,7 @@ def _scan_tv(root: Path, stats: dict) -> None:
         with db.connect() as c:
             row = c.execute("SELECT mtime FROM library_episodes WHERE path=?",
                             (str(f),)).fetchone()
-        if row and abs((row["mtime"] or 0) - st.st_mtime) < 1:
+        if not force and row and abs((row["mtime"] or 0) - st.st_mtime) < 1:
             stats["skipped"] += 1
             continue
 
@@ -158,7 +158,7 @@ def _scan_tv(root: Path, stats: dict) -> None:
         stats["episodes"] += 1
 
 
-def _scan_movies(root: Path, stats: dict) -> None:
+def _scan_movies(root: Path, stats: dict, force: bool = False) -> None:
     mv = root / "movies"
     if not mv.exists():
         return
@@ -174,7 +174,7 @@ def _scan_movies(root: Path, stats: dict) -> None:
         with db.connect() as c:
             row = c.execute("SELECT mtime FROM library_movies WHERE path=?",
                             (str(f),)).fetchone()
-        if row and abs((row["mtime"] or 0) - st.st_mtime) < 1:
+        if not force and row and abs((row["mtime"] or 0) - st.st_mtime) < 1:
             stats["skipped"] += 1
             continue
         info = guessit(f.name) if guessit else {}
@@ -196,8 +196,10 @@ def _scan_movies(root: Path, stats: dict) -> None:
         stats["movies"] += 1
 
 
-def scan() -> dict:
-    """Full incremental scan of the library. Returns counts."""
+def scan(force: bool = False) -> dict:
+    """Full incremental scan of the library. Returns counts.
+    force=True ignores the mtime cache and re-reads every file (useful right
+    after a batch of downloads lands, or when folders were reorganized)."""
     db.init()
     root = _library_root()
     stats = {"episodes": 0, "movies": 0, "skipped": 0, "unparsed": 0}
@@ -208,8 +210,8 @@ def scan() -> dict:
     if guessit is None:
         stats["error"] = "guessit not installed"
         return stats
-    _scan_tv(root, stats)
-    _scan_movies(root, stats)
+    _scan_tv(root, stats, force=force)
+    _scan_movies(root, stats, force=force)
     log.info("Library scan: %d episodes, %d movies (%d skipped, %d unparsed)",
              stats["episodes"], stats["movies"], stats["skipped"], stats["unparsed"])
     return stats

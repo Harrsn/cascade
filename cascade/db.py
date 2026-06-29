@@ -175,3 +175,65 @@ def history_stats() -> dict:
                           "WHERE event='completed'").fetchone()
     return {"by_event": by_event, "completed_count": total["n"],
             "completed_bytes": total["s"]}
+
+
+# ---- subscriptions (scheduled-search auto-grab) ----
+def list_subscriptions(enabled_only: bool = False) -> list[dict]:
+    q = "SELECT * FROM subscriptions"
+    if enabled_only:
+        q += " WHERE enabled=1"
+    q += " ORDER BY id"
+    with connect() as c:
+        return [dict(r) for r in c.execute(q).fetchall()]
+
+
+def get_subscription(sid: int) -> dict | None:
+    with connect() as c:
+        r = c.execute("SELECT * FROM subscriptions WHERE id=?", (sid,)).fetchone()
+    return dict(r) if r else None
+
+
+def create_subscription(title: str, query: str, media_type: str = "tv",
+                        profile_id: int | None = None) -> int:
+    from datetime import datetime
+    with connect() as c:
+        cur = c.execute(
+            "INSERT INTO subscriptions (ts, title, media_type, query, profile_id, enabled) "
+            "VALUES (?,?,?,?,?,1)",
+            (datetime.now().isoformat(timespec="seconds"), title, media_type, query, profile_id))
+        return cur.lastrowid
+
+
+def update_subscription(sid: int, **fields) -> None:
+    allowed = {"title", "query", "media_type", "profile_id", "enabled",
+               "last_check", "last_grab"}
+    sets = {k: v for k, v in fields.items() if k in allowed}
+    if not sets:
+        return
+    cols = ", ".join(f"{k}=?" for k in sets)
+    with connect() as c:
+        c.execute(f"UPDATE subscriptions SET {cols} WHERE id=?",
+                  (*sets.values(), sid))
+
+
+def delete_subscription(sid: int) -> None:
+    with connect() as c:
+        c.execute("DELETE FROM subscriptions WHERE id=?", (sid,))
+
+
+def already_grabbed(title: str) -> bool:
+    with connect() as c:
+        return c.execute("SELECT 1 FROM grabbed WHERE title=?", (title,)).fetchone() is not None
+
+
+def mark_grabbed(title: str, sub_id: int | None = None) -> bool:
+    """Record a grabbed release. Returns False if it was already there (the
+    UNIQUE(title) constraint dedupes), True if newly inserted."""
+    from datetime import datetime
+    try:
+        with connect() as c:
+            c.execute("INSERT INTO grabbed (ts, sub_id, title) VALUES (?,?,?)",
+                      (datetime.now().isoformat(timespec="seconds"), sub_id, title))
+        return True
+    except sqlite3.IntegrityError:
+        return False

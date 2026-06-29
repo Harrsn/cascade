@@ -282,3 +282,64 @@ def test_profile_api_crud(client_app):
     names = [p["name"] for p in client_app.get("/api/profiles").json()["profiles"]]
     assert "T" in names
     client_app.delete(f"/api/profiles/{pid}")
+
+
+# ---------------- subscriptions / scheduler ----------------
+def test_subscription_crud(tmp_path, monkeypatch):
+    monkeypatch.setenv("EVENTS_FILE", str(tmp_path / "events.jsonl"))
+    import importlib
+    from cascade import config as cfgmod
+    importlib.reload(cfgmod)
+    from cascade import db
+    importlib.reload(db)
+    db.init()
+    sid = db.create_subscription("Show", "show s01", "tv", 1)
+    assert db.get_subscription(sid)["title"] == "Show"
+    db.update_subscription(sid, enabled=0)
+    assert db.get_subscription(sid)["enabled"] == 0
+    assert len(db.list_subscriptions(enabled_only=True)) == 0
+    db.delete_subscription(sid)
+    assert db.get_subscription(sid) is None
+
+
+def test_grabbed_dedupe(tmp_path, monkeypatch):
+    monkeypatch.setenv("EVENTS_FILE", str(tmp_path / "events.jsonl"))
+    import importlib
+    from cascade import config as cfgmod
+    importlib.reload(cfgmod)
+    from cascade import db
+    importlib.reload(db)
+    db.init()
+    assert db.mark_grabbed("Release.X.1080p") is True
+    assert db.already_grabbed("Release.X.1080p") is True
+    assert db.mark_grabbed("Release.X.1080p") is False  # dedupe
+
+
+def test_scheduler_grabs_and_dedupes(tmp_path, monkeypatch):
+    monkeypatch.setenv("EVENTS_FILE", str(tmp_path / "events.jsonl"))
+    monkeypatch.setenv("JACKETT_API_KEY", "k")
+    import importlib
+    from cascade import config as cfgmod
+    importlib.reload(cfgmod)
+    from cascade import db
+    importlib.reload(db)
+    db.init()
+    from cascade import scheduler as sch
+    importlib.reload(sch)
+    GB = 1024 ** 3
+    db.create_subscription("Show", "show s01", "tv", 1)
+    sch.searchmod.search = lambda *a, **k: [
+        {"title": "Show S01E01 1080p WEB-DL", "href": "magnet:x", "seeders": 50,
+         "size": int(2 * GB), "badges": {"res": "1080p", "source": "WEB-DL"}}]
+
+    class FakeAdd:
+        id = "a"; name = "x"; duplicate = False
+
+    class FakeClient:
+        def add(self, *a, **k):
+            return FakeAdd()
+    sch.make_client = lambda *a, **k: FakeClient()
+    r1 = sch.run_once()
+    assert r1["grabbed"] == 1
+    r2 = sch.run_once()
+    assert r2["grabbed"] == 0   # dedupe: same release not grabbed twice

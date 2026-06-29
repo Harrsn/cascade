@@ -343,3 +343,63 @@ def test_scheduler_grabs_and_dedupes(tmp_path, monkeypatch):
     assert r1["grabbed"] == 1
     r2 = sch.run_once()
     assert r2["grabbed"] == 0   # dedupe: same release not grabbed twice
+
+
+# ---------------- library awareness (scan/reconcile/hunt) ----------------
+def _fake_library(tmp_path):
+    tv = tmp_path / "lib" / "tvshows" / "Test Show" / "Season 01"
+    tv.mkdir(parents=True)
+    (tv / "Test Show - S01E01 1080p.mkv").write_bytes(b"x" * (60 * 1024 * 1024))
+    (tv / "Test Show - S01E02 720p.mkv").write_bytes(b"x" * (60 * 1024 * 1024))
+    return tmp_path / "lib"
+
+
+def test_library_scan_and_have(tmp_path, monkeypatch):
+    monkeypatch.setenv("EVENTS_FILE", str(tmp_path / "events.jsonl"))
+    monkeypatch.setenv("LIBRARY_ROOT", str(_fake_library(tmp_path)))
+    import importlib
+    from cascade import config as cfgmod
+    importlib.reload(cfgmod)
+    from cascade import db
+    importlib.reload(db)
+    db.init()
+    from cascade import library as L
+    importlib.reload(L)
+    s = L.scan()
+    assert s["episodes"] == 2
+    assert L.have_episode("Test Show", 1, 1)
+    assert not L.have_episode("Test Show", 1, 5)
+    # incremental: rescan skips
+    assert L.scan()["skipped"] == 2
+
+
+def test_reconcile_missing_and_upgrade(tmp_path, monkeypatch):
+    monkeypatch.setenv("EVENTS_FILE", str(tmp_path / "events.jsonl"))
+    monkeypatch.setenv("LIBRARY_ROOT", str(_fake_library(tmp_path)))
+    import importlib, json
+    from cascade import config as cfgmod
+    importlib.reload(cfgmod)
+    from cascade import db
+    importlib.reload(db)
+    db.init()
+    from cascade import library as L
+    importlib.reload(L)
+    L.scan()
+    from cascade import tmdb as T
+    importlib.reload(T)
+    T.details = lambda tid, mt: {"seasons": 1, "title": "Test Show"}
+    T.episodes = lambda tid, n: [
+        {"season": 1, "episode": 1, "title": "P", "air_date": "2020-01-01"},
+        {"season": 1, "episode": 2, "title": "T", "air_date": "2020-01-08"},
+        {"season": 1, "episode": 3, "title": "Th", "air_date": "2020-01-15"}]
+    from cascade import series as S
+    importlib.reload(S)
+    with db.connect() as c:
+        c.execute("INSERT INTO profiles (name,min_seeders,resolutions,sources,max_size_gb) "
+                  "VALUES (?,?,?,?,?)", ("HD", 1, json.dumps(["1080p"]), json.dumps(["WEB-DL"]), 10))
+        pid = c.execute("SELECT id FROM profiles WHERE name='HD'").fetchone()["id"]
+    sid = S.add_series(123, "Test Show", 2020, None, pid)
+    r = S.reconcile(sid)
+    assert r["missing"] == 1   # S01E03
+    assert r["upgrades"] == 1  # S01E02 in 720p, want 1080p
+    assert r["have"] == 2

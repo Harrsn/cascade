@@ -478,7 +478,11 @@ function renderShows(){
       <div class="pimg" style="${s.poster?`background-image:url('${esc(s.poster)}')`:''}">${s.poster?'':'no art'}</div>
       <div class="body"><div class="lt">${esc(s.title)}</div><div class="ly">${s.year||''}</div>
         <div class="lmeta"><span>${s.have}/${s.total} eps</span>
-          ${s.wanted?`<span class="pill want">${s.wanted} wanted</span>`:'<span class="pill have">complete</span>'}
+          ${(()=>{const miss=Math.max(0,s.total-s.have);
+            if(s.monitor_mode==='none')return '<span class="pill">paused</span>';
+            if(s.have>=s.total&&s.total>0)return '<span class="pill have">complete</span>';
+            if(s.monitor_mode==='future')return `<span class="pill">future only · ${miss} older missing</span>`;
+            return `<span class="pill want">${miss} missing</span>`;})()}
           ${prof?`<span class="muted">${esc(prof.name)}</span>`:''}</div>
         <div class="lbar"><i class="${pct<100?'partial':''}" style="width:${pct}%"></i></div>
         <div class="lact"><button class="link-btn danger" data-del="${s.id}">remove</button></div>

@@ -90,8 +90,9 @@ def import_library(profile_id: int | None = None, default_monitor: bool = True) 
             result["unmatched"].append({"name": name, "kind": "show"})
             continue
         try:
-            series_mod.add_series(match["tmdb_id"], match["title"], match.get("year"),
+            sid = series_mod.add_series(match["tmdb_id"], match["title"], match.get("year"),
                                   match.get("poster"), profile_id)
+            series_mod.reconcile(sid)
             result["shows_imported"] += 1
             log.info("Auto-imported show: %s (tmdb %s)", match["title"], match["tmdb_id"])
         except Exception as e:                       # noqa: BLE001

@@ -581,6 +581,13 @@ def api_series_delete(sid: int):
     return {"status": "ok"}
 
 
+@app.post("/api/series/{sid}/monitor")
+def api_series_monitor(sid: int, mode: str = Query("all")):
+    from . import series as series_mod
+    series_mod.set_monitor_mode(sid, mode)
+    return {"status": "ok", "mode": mode}
+
+
 @app.get("/api/series/{sid}/episodes")
 def api_series_episodes(sid: int):
     from . import series as series_mod
@@ -605,6 +612,12 @@ def api_library_import(profile_id: int | None = Query(None)):
     library import). Requires a TMDb key."""
     from . import importer
     return importer.import_library(profile_id)
+
+
+@app.get("/api/library/report")
+def api_library_report():
+    from . import library
+    return library.scan_report()
 
 
 @app.post("/api/library/scan")
@@ -645,6 +658,12 @@ def api_movies_add(m: MovieAdd):
     from . import movies as movies_mod
     mid = movies_mod.add_movie(m.tmdb_id, m.title, m.year, m.poster, m.profile_id)
     return {"status": "ok", "id": mid}
+
+
+@app.get("/api/movies/{mid}/detail")
+def api_movie_detail(mid: int):
+    from . import movies as movies_mod
+    return movies_mod.movie_detail(mid)
 
 
 @app.delete("/api/movies/{mid}")

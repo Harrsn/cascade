@@ -149,6 +149,7 @@ def details(tmdb_id: int, media_type: str) -> dict:
         "rating": round(d.get("vote_average", 0), 1),
         "genres": [g["name"] for g in d.get("genres", [])],
         "seasons": d.get("number_of_seasons"),
+        "runtime": d.get("runtime"),
     }
     _cache_put(ck, out)
     return out

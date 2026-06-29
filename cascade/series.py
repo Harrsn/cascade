@@ -101,10 +101,23 @@ def _profile_min_res(profile_id: int | None) -> str | None:
 
 def reconcile(series_id: int) -> dict:
     """Diff canonical episodes vs. library for one series; populate `wanted`.
-    Returns {missing, upgrades, have}."""
+    Respects the series monitor_mode: 'none' skips entirely, 'future' only wants
+    episodes that aired on/after the day the show was added (no backlog hunting),
+    'all' wants every missing aired episode. Returns {missing, upgrades, have}."""
     s = get_series(series_id)
     if not s:
         return {"missing": 0, "upgrades": 0, "have": 0}
+    mode = s.get("monitor_mode") or "all"
+    if mode == "none":
+        # clear any outstanding wants for a paused show
+        with db.connect() as c:
+            c.execute("DELETE FROM wanted WHERE series_id=? AND status='wanted'", (series_id,))
+        return {"missing": 0, "upgrades": 0, "have": 0, "paused": True}
+    # 'future' mode: only want episodes airing on/after the add date
+    cutoff = None
+    if mode == "future" and s.get("added_ts"):
+        cutoff = s["added_ts"][:10]               # YYYY-MM-DD
+
     target_res = _profile_min_res(s.get("profile_id"))
     target_rank = _RES_RANK.get(target_res, 0)
 
@@ -119,6 +132,13 @@ def reconcile(series_id: int) -> dict:
         season, episode = ep["season"], ep["episode"]
         # skip episodes that haven't aired yet (no point hunting them)
         if ep["air_date"] and ep["air_date"] > today:
+            continue
+        # 'future' mode: skip episodes that aired before the show was added
+        if cutoff and ep["air_date"] and ep["air_date"] < cutoff:
+            # never want backlog episodes; clear any stale want and count owned
+            _clear_wanted(series_id, season, episode)
+            if library.have_episode(s["title"], season, episode):
+                have += 1
             continue
         # season 0 is "specials" — skip from missing-hunting by default
         if season == 0:
@@ -221,3 +241,12 @@ def hunt_series(series_id: int, max_grabs: int = 3) -> dict:
     from . import scheduler
     reconcile(series_id)
     return scheduler.hunt_wanted(series_filter=series_id, max_override=max_grabs)
+
+
+def set_monitor_mode(series_id: int, mode: str) -> None:
+    """Set a show's monitor mode: all | future | none."""
+    if mode not in ("all", "future", "none"):
+        mode = "all"
+    with db.connect() as c:
+        c.execute("UPDATE series SET monitor_mode=? WHERE id=?", (mode, series_id))
+    reconcile(series_id)

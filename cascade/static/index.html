@@ -257,6 +257,7 @@
     <div class="page-head">
       <h1>Shows</h1><span class="count" id="showsCount"></span>
       <div class="ph-actions">
+        <button class="btn ghost" id="showsReport" title="What didn't parse">scan report</button>
         <button class="btn ghost" id="showsImport">import library</button>
         <button class="btn ghost" id="showsScan">scan + hunt</button>
         <button class="btn" id="showsAdd">+ add show</button>
@@ -285,9 +286,26 @@
     <div class="page-head">
       <button class="btn ghost" id="sdBack">← shows</button>
       <h1 id="sdTitle"></h1><span class="count" id="sdCount"></span>
-      <div class="ph-actions"><button class="btn" id="sdHunt">hunt missing</button></div>
+      <div class="ph-actions">
+        <select id="sdMonitor" title="What to hunt for this show" style="margin-right:8px">
+          <option value="all">monitor: all episodes</option>
+          <option value="future">monitor: future only</option>
+          <option value="none">monitor: paused</option>
+        </select>
+        <button class="btn" id="sdHunt">hunt missing</button>
+      </div>
     </div>
     <div id="sdBody"></div>
+  </section>
+
+  <!-- ============ MOVIE DETAIL PAGE ============ -->
+  <section class="page" id="page-moviedetail">
+    <div class="page-head">
+      <button class="btn ghost" id="mdBack">← movies</button>
+      <h1 id="mdTitle"></h1>
+      <div class="ph-actions"><button class="btn" id="mdSearch">search releases</button></div>
+    </div>
+    <div id="mdBody"></div>
   </section>
 
   <!-- ============ AUTO-GRAB PAGE ============ -->
@@ -472,7 +490,7 @@ function renderShows(){
 
 // show detail view
 let sdCurrentId=null;
-function showPage(page){PAGES.concat(["showdetail"]).forEach(p=>{const el=$("page-"+p);if(el)el.classList.toggle("on",p===page);});}
+function showPage(page){PAGES.concat(["showdetail","moviedetail"]).forEach(p=>{const el=$("page-"+p);if(el)el.classList.toggle("on",p===page);});}
 async function openShowDetail(sid){
   sdCurrentId=sid;showPage("showdetail");
   document.querySelectorAll(".navlink").forEach(l=>l.classList.toggle("on",l.dataset.page==="shows"));
@@ -481,6 +499,7 @@ async function openShowDetail(sid){
     const d=await jget(`/api/series/${sid}/episodes`);
     $("sdTitle").textContent=d.series.title+(d.series.year?` (${d.series.year})`:"");
     $("sdCount").textContent=`${d.have}/${d.total} episodes`;
+    if($("sdMonitor"))$("sdMonitor").value=d.series.monitor_mode||"all";
     $("sdBody").innerHTML=d.seasons.map(s=>`
       <div class="season">
         <div class="season-head">Season ${s.season} <span class="muted">${s.have}/${s.total}</span></div>
@@ -494,6 +513,12 @@ async function openShowDetail(sid){
   }catch(_){$("sdBody").innerHTML="<div class='empty'>Couldn't load episodes.</div>";}
 }
 $("sdBack").addEventListener("click",()=>{showPage("shows");document.querySelectorAll(".navlink").forEach(l=>l.classList.toggle("on",l.dataset.page==="shows"));loadShows();});
+$("sdMonitor").addEventListener("change",async()=>{
+  if(!sdCurrentId)return;
+  try{await jsend(`/api/series/${sdCurrentId}/monitor?mode=${$("sdMonitor").value}`,"POST");
+    toast("Monitoring updated.");openShowDetail(sdCurrentId);}
+  catch(_){toast("Couldn't update","err");}
+});
 $("sdHunt").addEventListener("click",async()=>{
   if(!sdCurrentId)return;$("sdHunt").disabled=true;$("sdHunt").textContent="hunting…";
   try{const r=await jsend(`/api/series/${sdCurrentId}/hunt`,"POST");toast(`Grabbed ${r.grabbed||0} (cap applies).`);openShowDetail(sdCurrentId);}
@@ -502,6 +527,7 @@ $("sdHunt").addEventListener("click",async()=>{
 });
 $("showsAdd").addEventListener("click",()=>addMediaForm("show"));
 $("showsScan").addEventListener("click",()=>scanHunt("show"));
+$("showsReport").addEventListener("click",openScanReport);
 $("showsImport").addEventListener("click",async()=>{
   if(!confirm("Scan your library folders and auto-monitor every show and movie found? This matches each against TMDb and may take a minute for a large library."))return;
   $("showsImport").disabled=true;$("showsImport").textContent="importing…";
@@ -524,15 +550,66 @@ function renderMovies(){
   $("moviesEmpty").hidden=moviesData.length>0;
   $("moviesGrid").innerHTML=moviesData.map(m=>{
     const prof=profilesCache.find(p=>p.id===m.profile_id);
-    return `<div class="lcard">
+    return `<div class="lcard" data-mid="${m.id}" style="cursor:pointer">
       <div class="pimg" style="${m.poster?`background-image:url('${esc(m.poster)}')`:''}">${m.poster?'':'no art'}</div>
       <div class="body"><div class="lt">${esc(m.title)}</div><div class="ly">${m.year||''}</div>
         <div class="lmeta"><span class="pill ${m.status==='have'?'have':'want'}">${m.status==='have'?'in library':'wanted'}</span>
           ${prof?`<span class="muted">${esc(prof.name)}</span>`:''}</div>
         <div class="lact"><button class="link-btn danger" data-del="${m.id}">remove</button></div>
       </div></div>`;}).join("");
-  $("moviesGrid").querySelectorAll("[data-del]").forEach(b=>b.addEventListener("click",async()=>{await jsend(`/api/movies/${b.dataset.del}`,"DELETE");toast("Removed.");loadMovies();}));
+  $("moviesGrid").querySelectorAll("[data-del]").forEach(b=>b.addEventListener("click",async e=>{e.stopPropagation();await jsend(`/api/movies/${b.dataset.del}`,"DELETE");toast("Removed.");loadMovies();}));
+  $("moviesGrid").querySelectorAll(".lcard").forEach(card=>card.addEventListener("click",e=>{
+    if(e.target.closest("[data-del]"))return;const id=+card.dataset.mid;if(id)openMovieDetail(id);}));
 }
+
+// movie detail view
+let mdCurrentId=null;
+async function openMovieDetail(mid){
+  mdCurrentId=mid;showPage("moviedetail");
+  document.querySelectorAll(".navlink").forEach(l=>l.classList.toggle("on",l.dataset.page==="movies"));
+  $("mdBody").innerHTML="<div class='muted'>loading…</div>";$("mdTitle").textContent="";
+  try{
+    const d=await jget(`/api/movies/${mid}/detail`);
+    const m=d.movie,f=d.file,meta=d.meta||{};
+    $("mdTitle").textContent=m.title+(m.year?` (${m.year})`:"");
+    const fileBlock=f?`<div class="prof-card"><b>In library</b>
+      <div class="prof-meta"><span class="pill have">have</span>
+      ${f.quality?`<span class="tag res">${esc(f.quality)}</span>`:'<span class="muted">unknown quality</span>'}
+      <span class="muted">· ${human(f.size||0)}</span></div>
+      <div class="hint" style="margin-top:6px;word-break:break-all">${esc(f.path||'')}</div></div>`
+      :`<div class="prof-card"><b>Not in library</b> <span class="pill want">wanted</span>
+      <div class="hint">Use "search releases" to find and grab this movie.</div></div>`;
+    $("mdBody").innerHTML=`
+      <div style="display:flex;gap:18px;flex-wrap:wrap">
+        <div class="pimg" style="width:140px;height:210px;flex-shrink:0;${m.poster?`background-image:url('${esc(m.poster)}')`:''}">${m.poster?'':'no art'}</div>
+        <div style="flex:1;min-width:240px">
+          ${meta.rating?`<div class="muted" style="margin-bottom:6px">★ ${meta.rating}${meta.runtime?` · ${meta.runtime} min`:''}${(meta.genres||[]).length?` · ${meta.genres.join(', ')}`:''}</div>`:''}
+          <p style="font-size:13px;line-height:1.6">${esc(meta.overview||'No description available.')}</p>
+          ${fileBlock}
+        </div>
+      </div>
+      <div id="mdResults" style="margin-top:16px"></div>`;
+  }catch(_){$("mdBody").innerHTML="<div class='empty'>Couldn't load movie.</div>";}
+}
+$("mdBack").addEventListener("click",()=>{showPage("movies");document.querySelectorAll(".navlink").forEach(l=>l.classList.toggle("on",l.dataset.page==="movies"));loadMovies();});
+$("mdSearch").addEventListener("click",async()=>{
+  if(!mdCurrentId)return;$("mdSearch").disabled=true;$("mdSearch").textContent="searching…";
+  try{
+    const d=await jget(`/api/movies/${mdCurrentId}/detail`);
+    const m=d.movie;const q=m.title+(m.year?` ${m.year}`:"");
+    const sr=await jget(`/api/search?q=${encodeURIComponent(q)}&cat=movies&limit=40`);
+    const list=sr.results||[];
+    $("mdResults").innerHTML=`<h2 style="font-size:15px;margin:0 0 8px">Releases for "${esc(q)}"</h2>`+
+      (list.length?`<table><thead><tr><th>title</th><th>size</th><th>health</th><th></th></tr></thead><tbody>`+
+      list.map((r,i)=>`<tr><td class="title">${esc(r.title)}${badgeHtml(r.badges)}</td>
+        <td>${esc(r.size_h||human(r.size))}</td><td>${healthHtml(r)}</td>
+        <td><button class="addbtn" data-madd="${i}">add</button></td></tr>`).join("")+`</tbody></table>`
+      :"<div class='empty'>No releases found.</div>");
+    window._mdReleases=list;
+    $("mdResults").querySelectorAll("[data-madd]").forEach(b=>b.addEventListener("click",()=>addTorrent(window._mdReleases[+b.dataset.madd],b)));
+  }catch(_){toast("Search failed","err");}
+  finally{$("mdSearch").disabled=false;$("mdSearch").textContent="search releases";}
+});
 $("moviesAdd").addEventListener("click",()=>addMediaForm("movie"));
 $("moviesScan").addEventListener("click",()=>scanHunt("movie"));
 $("moviesImport").addEventListener("click",async()=>{
@@ -710,6 +787,20 @@ $("settingsBtn").addEventListener("click",async()=>{
       REMOVE_ON_COMPLETE:$("st_rem").value,NOTIFY_URLS:$("st_notify").value.trim(),UI_THEME:$("st_theme").value,UI_ACCENT:$("st_accent").value}});
     toast("Settings saved.");closeModal();refreshMeta();});
 });
+
+// ============ scan report (diagnostic) ============
+async function openScanReport(){
+  openModal("Scan report",`<div class="muted">loading…</div>`);
+  try{
+    const r=await jget("/api/library/report");
+    if(!r.total){$("modalBody").innerHTML="<div class='empty'>Everything in your library parsed cleanly — nothing unmatched.</div>";return;}
+    const sect=(label,items)=>items.length?`<label class="fld">${label} (${items.length})</label>
+      <div style="max-height:200px;overflow-y:auto;border:1px solid var(--line);border-radius:7px;padding:8px">
+      ${items.map(x=>`<div class="hist-row"><span class="hn">${esc(x.name)}</span><span class="he">${esc(x.reason)}</span></div>`).join("")}</div>`:"";
+    $("modalBody").innerHTML=`<div class="hint" style="margin-bottom:10px">${r.total} file(s) couldn't be matched to a show or movie. These are usually oddly-named files, extras, or featurettes. Rename them to a standard pattern (e.g. <code>Show - S01E02.mkv</code>) and re-scan, or ignore them.</div>
+      ${sect("Unparsed TV files",r.unparsed_tv)}${sect("Unparsed movie files",r.unparsed_movies)}`;
+  }catch(_){$("modalBody").innerHTML="<div class='empty'>Couldn't load report.</div>";}
+}
 
 // ============ modal helpers ============
 function openModal(title,html){$("modalTitle").textContent=title;$("modalBody").innerHTML=html;$("modal").classList.add("show");}

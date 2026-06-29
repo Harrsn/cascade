@@ -128,3 +128,25 @@ def reconcile_all() -> dict:
         r = reconcile(m["id"])
         total["have" if r["have"] else "wanted"] += 1
     return total
+
+
+def movie_detail(movie_id: int) -> dict:
+    """Detail view for a movie: the monitored entry, the on-disk file (if owned,
+    with quality/size/path), and TMDb metadata."""
+    m = get_movie(movie_id)
+    if not m:
+        return {"movie": None}
+    # find the owned library file via the same matcher reconcile uses
+    with db.connect() as c:
+        lib = c.execute("SELECT title, year, quality, path, size FROM library_movies").fetchall()
+    owned = None
+    for r in lib:
+        if _movie_matches(r["title"], r["year"], m["title"], m.get("year")):
+            owned = dict(r)
+            break
+    meta = {}
+    try:
+        meta = tmdb.details(m["tmdb_id"], "movie")
+    except Exception:                            # noqa: BLE001
+        meta = {}
+    return {"movie": m, "file": owned, "meta": meta}

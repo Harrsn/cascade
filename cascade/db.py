@@ -103,6 +103,14 @@ CREATE TABLE IF NOT EXISTS grabbed (
 
 -- ── Library awareness (Sonarr/Radarr-style) ──
 
+-- Files the scanner couldn't parse into a show/episode or movie (for the report).
+CREATE TABLE IF NOT EXISTS scan_unparsed (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    path        TEXT UNIQUE,
+    kind        TEXT,                 -- tv | movie
+    reason      TEXT
+);
+
 -- Monitored movies (Radarr-side): movies Cascade tracks and hunts if missing.
 CREATE TABLE IF NOT EXISTS movies (
     id           INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -125,6 +133,7 @@ CREATE TABLE IF NOT EXISTS series (
     poster       TEXT,
     profile_id   INTEGER,
     monitored    INTEGER DEFAULT 1,
+    monitor_mode TEXT DEFAULT 'all',   -- all | future | none
     total_seasons INTEGER DEFAULT 0,
     added_ts     TEXT,
     last_refresh TEXT
@@ -191,6 +200,7 @@ def init() -> None:
             return
         with connect() as c:
             c.executescript(SCHEMA)
+            _migrate(c)
             # seed a sensible default quality profile if none exist
             n = c.execute("SELECT COUNT(*) AS n FROM profiles").fetchone()["n"]
             if n == 0:
@@ -200,6 +210,23 @@ def init() -> None:
                     ("Default", 3, json.dumps(["1080p", "720p"]),
                      json.dumps(["WEB-DL", "BluRay", "WEBRip"]), 8.0))
         _initialized = True
+
+
+def _migrate(c) -> None:
+    """Idempotently add columns introduced after a DB was first created.
+    CREATE TABLE IF NOT EXISTS won't alter existing tables, so add-column
+    migrations live here. Safe to run on every init."""
+    def cols(table):
+        return {r["name"] for r in c.execute(f"PRAGMA table_info({table})").fetchall()}
+    add = [
+        ("series", "monitor_mode", "TEXT DEFAULT 'all'"),
+    ]
+    for table, col, decl in add:
+        try:
+            if col not in cols(table):
+                c.execute(f"ALTER TABLE {table} ADD COLUMN {col} {decl}")
+        except Exception:                        # noqa: BLE001 - table may not exist yet
+            pass
 
 
 # ---- generic settings KV (the in-app settings editor uses this) ----

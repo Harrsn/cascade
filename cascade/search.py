@@ -9,7 +9,16 @@ import requests
 
 from .classify import classify
 
-CATS = {"movies": "2000", "tv": "5000", "all": ""}
+CATS = {
+    "all": "",
+    "movies": "2000",
+    "tv": "5000",
+    "games": "1000,4000",   # console + PC/games
+    "console": "1000",
+    "pc": "4000",
+    "music": "3000",
+    "books": "7000",
+}
 _NS = "{http://torznab.com/schemas/2015/feed}"
 
 

@@ -5,26 +5,55 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Cascade</title>
 <style>
-  :root {
+  :root{
     --bg:#0d1117; --panel:#161b22; --panel2:#1b2230; --line:#21262d; --line-hi:#30363d;
     --txt:#e6edf3; --muted:#8b949e; --accent:#2f81f7; --good:#3fb950; --warn:#d29922;
     --bad:#f85149; --purple:#a371f7; --mono:ui-monospace,"SF Mono","JetBrains Mono",Menlo,Consolas,monospace;
   }
   *{box-sizing:border-box;}
   body{margin:0;background:var(--bg);color:var(--txt);font-family:var(--mono);font-size:14px;line-height:1.5;}
-  .wrap{max-width:1140px;margin:0 auto;padding:20px 20px 130px;}
-  header{display:flex;align-items:center;gap:14px;margin-bottom:6px;}
-  h1{font-size:18px;margin:0;letter-spacing:.5px;} h1 .dot{color:var(--accent);}
-  .sub{color:var(--muted);font-size:12px;} .spacer{flex:1;}
-  .activity-btn{background:var(--panel);border:1px solid var(--line-hi);color:var(--txt);border-radius:6px;
-    padding:7px 13px;cursor:pointer;font-family:var(--mono);font-size:13px;display:flex;align-items:center;gap:7px;}
-  .activity-btn:hover{border-color:var(--accent);}
-  .badge-count{background:var(--accent);color:#fff;border-radius:10px;padding:0 7px;font-size:11px;min-width:18px;text-align:center;}
-  .badge-count.zero{display:none;}
+  a{color:inherit;text-decoration:none;}
+
+  /* top nav bar */
+  .topnav{position:sticky;top:0;z-index:50;background:var(--panel);border-bottom:1px solid var(--line);
+    display:flex;align-items:center;gap:6px;padding:0 18px;height:54px;}
+  .brand{font-size:17px;font-weight:700;letter-spacing:.5px;margin-right:18px;display:flex;align-items:center;gap:8px;}
+  .brand .dot{color:var(--accent);}
+  .navlink{padding:8px 15px;border-radius:7px;color:var(--muted);cursor:pointer;font-size:13px;
+    border:1px solid transparent;white-space:nowrap;}
+  .navlink:hover{color:var(--txt);background:var(--panel2);}
+  .navlink.on{color:var(--txt);background:var(--accent);border-color:var(--accent);color:#fff;}
+  .navspacer{flex:1;}
+  .navbtn{background:var(--panel2);border:1px solid var(--line-hi);color:var(--txt);border-radius:7px;
+    padding:7px 12px;cursor:pointer;font-family:var(--mono);font-size:13px;}
+  .navbtn:hover{border-color:var(--accent);}
+  .navbtn .badge{background:var(--accent);color:#fff;border-radius:10px;padding:0 6px;font-size:11px;margin-left:5px;}
+  .navbtn .badge.zero{display:none;}
+
+  .wrap{max-width:1180px;margin:0 auto;padding:22px 20px 60px;}
+  .page{display:none;} .page.on{display:block;}
+  .page-head{display:flex;align-items:center;gap:12px;margin-bottom:16px;}
+  .page-head h1{font-size:20px;margin:0;} .page-head .count{color:var(--muted);font-size:13px;}
+  .page-head .ph-actions{margin-left:auto;display:flex;gap:8px;}
+
+  /* buttons */
+  .btn{background:var(--accent);border:1px solid var(--accent);color:#fff;border-radius:7px;
+    padding:8px 16px;font-family:var(--mono);font-size:13px;font-weight:600;cursor:pointer;}
+  .btn:hover{filter:brightness(1.08);} .btn:disabled{opacity:.5;cursor:default;}
+  .btn.ghost{background:transparent;border-color:var(--line-hi);color:var(--muted);font-weight:400;}
+  .btn.ghost:hover{border-color:var(--txt);color:var(--txt);filter:none;}
+  .btn.danger{background:transparent;border-color:var(--bad);color:var(--bad);}
+
+  /* inputs */
+  input[type=text],input[type=number],input[type=password],select{
+    background:var(--panel);color:var(--txt);border:1px solid var(--line-hi);border-radius:6px;
+    padding:9px 12px;font-family:var(--mono);font-size:13px;}
+  input[type=text]:focus,select:focus{outline:2px solid var(--accent);outline-offset:-1px;}
+  label.fld{display:block;font-size:12px;color:var(--muted);margin:12px 0 5px;}
 
   /* stats bar */
   .statsbar{display:flex;gap:18px;flex-wrap:wrap;padding:10px 14px;background:var(--panel);
-    border:1px solid var(--line);border-radius:8px;margin:12px 0;font-size:12px;}
+    border:1px solid var(--line);border-radius:8px;margin:0 0 16px;font-size:12px;}
   .stat{display:flex;flex-direction:column;gap:1px;}
   .stat .k{color:var(--muted);font-size:10px;text-transform:uppercase;letter-spacing:.5px;}
   .stat .v{font-variant-numeric:tabular-nums;}
@@ -33,1211 +62,585 @@
   .diskbar i{display:block;height:100%;background:var(--accent);}
   .diskbar i.warn{background:var(--warn);} .diskbar i.bad{background:var(--bad);}
 
-  form.bar{display:flex;gap:8px;margin:14px 0 6px;flex-wrap:wrap;position:relative;}
+  /* search */
+  form.bar{display:flex;gap:8px;margin:0 0 8px;flex-wrap:wrap;position:relative;}
   .searchwrap{flex:1 1 280px;min-width:0;position:relative;}
-  input[type=text]{width:100%;background:var(--panel);color:var(--txt);border:1px solid var(--line-hi);
-    border-radius:6px;padding:10px 12px;font-family:var(--mono);font-size:14px;}
-  input[type=text]:focus{outline:2px solid var(--accent);outline-offset:-1px;}
-  select,button.go{background:var(--panel);color:var(--txt);border:1px solid var(--line-hi);border-radius:6px;
-    padding:10px 14px;font-family:var(--mono);font-size:14px;cursor:pointer;}
-  button.go{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600;}
-  button.go:hover{filter:brightness(1.08);} button:disabled{opacity:.5;cursor:default;}
-
-  /* history dropdown */
-  .history{position:absolute;top:calc(100% + 4px);left:0;right:0;background:var(--panel);
-    border:1px solid var(--line-hi);border-radius:6px;z-index:20;overflow:hidden;display:none;}
-  .history.show{display:block;}
-  .history div{padding:8px 12px;cursor:pointer;font-size:13px;display:flex;align-items:center;gap:8px;}
-  .history div:hover,.history div.sel{background:var(--panel2);}
-  .history div .ico{color:var(--muted);font-size:11px;}
-
-  /* filter row */
+  .searchwrap input{width:100%;}
+  .mode-toggle{display:flex;gap:6px;margin:0 0 12px;}
+  .mode-toggle .mode{background:var(--panel);border:1px solid var(--line-hi);color:var(--muted);
+    border-radius:6px;padding:6px 14px;font-size:12px;cursor:pointer;}
+  .mode-toggle .mode.on{background:var(--accent);border-color:var(--accent);color:#fff;}
   .filters{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:8px 0;font-size:12px;}
   .filters label{color:var(--muted);display:flex;align-items:center;gap:5px;}
-  .filters select,.filters input{background:var(--panel);color:var(--txt);border:1px solid var(--line-hi);
-    border-radius:5px;padding:5px 8px;font-family:var(--mono);font-size:12px;}
   .filters input[type=number]{width:70px;}
-  .chip{padding:3px 10px;border:1px solid var(--line-hi);border-radius:14px;cursor:pointer;color:var(--muted);}
-  .chip.on{background:var(--accent);border-color:var(--accent);color:#fff;}
-  .status{color:var(--muted);font-size:12px;min-height:18px;margin:8px 2px;}
 
-  table{width:100%;border-collapse:collapse;margin-top:4px;}
-  th,td{text-align:left;padding:9px 10px;border-bottom:1px solid var(--line);vertical-align:top;}
-  th{color:var(--muted);font-weight:500;font-size:11px;text-transform:uppercase;letter-spacing:.6px;}
-  th.sortable{cursor:pointer;user-select:none;} th.sortable:hover{color:var(--txt);}
-  th .arrow{opacity:.5;font-size:9px;}
-  tr.result:hover td{background:#1b2026;} tr.result.kbsel td{background:#1d2733;box-shadow:inset 2px 0 0 var(--accent);}
-  td.seed{font-variant-numeric:tabular-nums;text-align:right;white-space:nowrap;}
-  td.size{text-align:right;white-space:nowrap;color:var(--muted);}
-  td.trk{color:var(--muted);white-space:nowrap;}
-  td.act{text-align:right;white-space:nowrap;}
-  .seed-good{color:var(--good);} .seed-mid{color:var(--warn);} .seed-bad{color:var(--bad);}
-  .health{display:inline-block;width:34px;height:4px;border-radius:2px;background:var(--line);vertical-align:middle;margin-left:6px;overflow:hidden;}
+  /* results table */
+  table{width:100%;border-collapse:collapse;margin-top:8px;}
+  th{text-align:left;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;
+    padding:6px 10px;border-bottom:1px solid var(--line);}
+  td{padding:9px 10px;border-bottom:1px solid var(--line);vertical-align:top;font-size:13px;}
+  tr:hover td{background:var(--panel);}
+  td.title{word-break:break-word;}
+  .tags{display:flex;flex-wrap:wrap;gap:4px;margin-top:4px;}
+  .tag{font-size:10px;padding:1px 6px;border-radius:3px;border:1px solid var(--line-hi);color:var(--muted);}
+  .tag.res{color:var(--accent);} .tag.src{color:var(--good);} .tag.ext{color:var(--muted);}
+  .tag.ctype{font-weight:600;}
+  .tag.ctype.game{color:var(--purple);} .tag.ctype.movie{color:var(--accent);} .tag.ctype.tv{color:var(--good);}
+  .tag.platform{background:var(--panel2);}
+  .health{display:inline-block;width:60px;height:5px;background:var(--line);border-radius:3px;overflow:hidden;vertical-align:middle;}
   .health i{display:block;height:100%;background:var(--good);}
-  .tags{display:flex;gap:4px;margin-top:5px;flex-wrap:wrap;}
-  .tag{font-size:10px;padding:1px 6px;border-radius:4px;border:1px solid var(--line-hi);color:var(--muted);letter-spacing:.3px;}
-  .tag.res{color:var(--accent);border-color:#1f3a5f;} .tag.src{color:var(--purple);border-color:#3a2a5f;}
-  .tag.ext{color:var(--good);border-color:#1f4a2f;}
-  button.add{padding:5px 12px;font-size:12px;background:transparent;border:1px solid var(--accent);
-    color:var(--accent);border-radius:6px;cursor:pointer;font-family:var(--mono);}
-  button.add:hover{background:var(--accent);color:#fff;}
-  button.add.done{border-color:var(--good);color:var(--good);}
-  button.add.warn-size{border-color:var(--warn);color:var(--warn);}
-  .empty{color:var(--muted);padding:30px 4px;}
-  .loadmore{display:block;margin:18px auto;padding:9px 20px;background:var(--panel);border:1px solid var(--line-hi);
-    color:var(--txt);border-radius:6px;cursor:pointer;font-family:var(--mono);font-size:13px;}
-  .loadmore:hover{border-color:var(--accent);}
-  .kbhint{color:var(--muted);font-size:11px;margin-left:8px;}
+  .addbtn{background:var(--accent);border:1px solid var(--accent);color:#fff;border-radius:5px;
+    padding:5px 12px;cursor:pointer;font-family:var(--mono);font-size:12px;font-weight:600;}
+  .addbtn:hover{filter:brightness(1.1);}
 
-  /* dock */
-  .dock{position:fixed;bottom:16px;right:16px;width:340px;max-width:calc(100vw - 32px);background:var(--panel);
-    border:1px solid var(--line-hi);border-radius:10px;box-shadow:0 8px 30px rgba(0,0,0,.5);overflow:hidden;
-    z-index:50;transition:transform .2s,opacity .2s;}
-  .dock.hidden{transform:translateY(140%);opacity:0;pointer-events:none;}
-  .dock-head{display:flex;align-items:center;gap:8px;padding:10px 12px;border-bottom:1px solid var(--line);cursor:pointer;user-select:none;}
-  .dock-head .t{font-size:12px;font-weight:600;} .dock-head .c{color:var(--muted);font-size:11px;}
-  .dock-head .expand{margin-left:auto;color:var(--muted);font-size:11px;}
-  .dock-body{max-height:300px;overflow-y:auto;} .dock.collapsed .dock-body{display:none;}
-  .xfer{padding:9px 12px;border-bottom:1px solid var(--line);} .xfer:last-child{border-bottom:none;}
-  .xfer .name{font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-  .xfer .meta{display:flex;gap:8px;font-size:10px;color:var(--muted);margin-top:3px;align-items:center;}
-  .bar-outer{height:5px;background:var(--line);border-radius:3px;margin-top:6px;overflow:hidden;}
-  .bar-inner{height:100%;background:var(--accent);border-radius:3px;transition:width .4s;}
-  .bar-inner.done{background:var(--good);} .bar-inner.stopped{background:var(--muted);} .bar-inner.err{background:var(--bad);}
-  .xfer .ctl,.pxfer .ctl{display:flex;gap:6px;margin-top:6px;flex-wrap:wrap;}
-  .xfer .ctl button{font-size:10px;padding:2px 8px;background:transparent;border:1px solid var(--line-hi);
-    color:var(--muted);border-radius:4px;cursor:pointer;font-family:var(--mono);}
-  .xfer .ctl button:hover{border-color:var(--accent);color:var(--txt);}
-  .xfer .ctl button.danger:hover{border-color:var(--bad);color:var(--bad);}
-  .err-msg{color:var(--bad);font-size:10px;margin-top:4px;}
-
-  /* panel */
-  .overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);opacity:0;pointer-events:none;transition:opacity .2s;z-index:60;}
-  .overlay.show{opacity:1;pointer-events:auto;}
-  .panel{position:fixed;top:0;right:0;height:100%;width:560px;max-width:94vw;background:var(--bg);
-    border-left:1px solid var(--line-hi);transform:translateX(100%);transition:transform .25s;z-index:61;display:flex;flex-direction:column;}
-  .panel.show{transform:translateX(0);}
-  .panel-head{display:flex;align-items:center;padding:14px 18px;border-bottom:1px solid var(--line);gap:12px;}
-  .panel-head h2{font-size:15px;margin:0;}
-  .panel-tabs{display:flex;gap:4px;margin-left:8px;}
-  .panel-tabs button{background:none;border:none;color:var(--muted);font-family:var(--mono);font-size:12px;
-    padding:5px 10px;cursor:pointer;border-radius:5px;}
-  .panel-tabs button.on{background:var(--panel);color:var(--txt);}
-  .panel-head .close{margin-left:auto;background:none;border:none;color:var(--muted);font-size:20px;cursor:pointer;}
-  .panel-body{overflow-y:auto;padding:8px 0;flex:1;}
-  .pxfer{padding:12px 18px;border-bottom:1px solid var(--line);}
-  .pxfer .name{font-size:13px;word-break:break-word;cursor:pointer;}
-  .pxfer .name:hover{color:var(--accent);}
-  .pxfer .meta{display:flex;gap:12px;font-size:11px;color:var(--muted);margin:5px 0;flex-wrap:wrap;align-items:center;}
-  .pxfer .ctl button{font-size:11px;padding:4px 12px;background:transparent;border:1px solid var(--line-hi);
-    color:var(--muted);border-radius:5px;cursor:pointer;font-family:var(--mono);}
-  .pxfer .ctl button:hover{border-color:var(--accent);color:var(--txt);}
-  .pxfer .ctl button.danger:hover{border-color:var(--bad);color:var(--bad);}
-  .filelist{margin-top:8px;padding:8px 10px;background:var(--panel);border-radius:6px;font-size:11px;display:none;}
-  .filelist.show{display:block;}
-  .filerow{display:flex;gap:8px;align-items:center;padding:2px 0;color:var(--muted);}
-  .filerow .fn{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--txt);}
-  .filerow.skip .fn{color:var(--muted);text-decoration:line-through;}
-  .st-pill{font-size:10px;padding:1px 7px;border-radius:4px;border:1px solid var(--line-hi);}
-  .st-downloading{color:var(--accent);border-color:#1f3a5f;} .st-seeding{color:var(--good);border-color:#1f4a2f;}
-  .st-stopped{color:var(--muted);}
-  .evrow{padding:9px 18px;border-bottom:1px solid var(--line);font-size:12px;display:flex;gap:10px;align-items:baseline;}
-  .evrow .ev-time{color:var(--muted);font-size:10px;white-space:nowrap;}
-  .evrow .ev-kind{font-size:10px;padding:1px 7px;border-radius:4px;border:1px solid var(--line-hi);white-space:nowrap;}
-  .ev-sorted{color:var(--good);border-color:#1f4a2f;} .ev-removed{color:var(--purple);border-color:#3a2a5f;}
-  .ev-completed{color:var(--accent);border-color:#1f3a5f;} .ev-sort_failed,.ev-remove_failed{color:var(--bad);border-color:#5f2020;}
-  .evrow .ev-name{flex:1;word-break:break-word;}
-
-  .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--panel);
-    border:1px solid var(--line-hi);border-left:3px solid var(--good);padding:12px 18px;border-radius:6px;
-    font-size:13px;opacity:0;transition:opacity .2s,transform .2s;pointer-events:none;max-width:90vw;z-index:80;}
-  .toast.show{opacity:1;transform:translateX(-50%) translateY(-4px);}
-  .toast.err{border-left-color:var(--bad);} .toast.warn{border-left-color:var(--warn);}
-
-  /* accent presets — swapped at runtime from /api/config */
-  body[data-accent="green"]{--accent:#3fb950;}
-  body[data-accent="purple"]{--accent:#a371f7;}
-  body[data-accent="amber"]{--accent:#d29922;}
-  body[data-accent="rose"]{--accent:#f778ba;}
-  body[data-theme="light"]{--bg:#ffffff;--panel:#f4f6f8;--panel2:#eaeef2;--line:#d8dee4;
-    --line-hi:#c0c8d0;--txt:#1c2128;--muted:#6a737d;}
-  /* setup wizard */
-  .wiz-overlay{position:fixed;inset:0;background:rgba(5,8,12,.82);backdrop-filter:blur(3px);
-    z-index:200;display:none;align-items:center;justify-content:center;padding:20px;}
-  .wiz-overlay.show{display:flex;}
-  .wiz{width:560px;max-width:96vw;max-height:92vh;overflow:hidden;background:var(--bg);
-    border:1px solid var(--line-hi);border-radius:14px;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,.6);}
-  .wiz-head{display:flex;align-items:center;gap:14px;padding:22px 24px 16px;border-bottom:1px solid var(--line);}
-  .wiz-logo{font-size:28px;}
-  .wiz-title{font-size:17px;font-weight:600;} .wiz-sub{color:var(--muted);font-size:12px;margin-top:2px;}
-  .wiz-body{padding:22px 24px;overflow-y:auto;}
-  .wiz-body label{display:block;font-size:12px;color:var(--muted);margin:14px 0 5px;}
-  .wiz-body input,.wiz-body select{width:100%;background:var(--panel);color:var(--txt);
-    border:1px solid var(--line-hi);border-radius:7px;padding:10px 12px;font-family:var(--mono);font-size:13px;}
-  .wiz-body input:focus,.wiz-body select:focus{outline:2px solid var(--accent);outline-offset:-1px;}
-  .wiz-body .hint{font-size:11px;color:var(--muted);margin-top:4px;line-height:1.4;}
-  .wiz-body .hint a{color:var(--accent);}
-  .wiz-intro{font-size:13px;color:var(--txt);line-height:1.6;}
-  .wiz-grid2{display:grid;grid-template-columns:1fr 1fr;gap:0 12px;}
-  .test-row{display:flex;align-items:center;gap:10px;margin-top:16px;}
-  .test-result{font-size:12px;flex:1;}
-  .test-result.ok{color:var(--good);} .test-result.bad{color:var(--bad);}
-  .wiz-foot{display:flex;align-items:center;padding:16px 24px;border-top:1px solid var(--line);}
-  .wiz-dots{flex:1;display:flex;justify-content:center;gap:6px;}
-  .wiz-dots i{width:7px;height:7px;border-radius:50%;background:var(--line-hi);}
-  .wiz-dots i.on{background:var(--accent);}
-  .wiz-btn{background:var(--accent);border:1px solid var(--accent);color:#fff;border-radius:7px;
-    padding:9px 20px;font-family:var(--mono);font-size:13px;font-weight:600;cursor:pointer;}
-  .wiz-btn:hover{filter:brightness(1.08);} .wiz-btn:disabled{opacity:.5;cursor:default;}
-  .wiz-btn.ghost{background:transparent;border-color:var(--line-hi);color:var(--muted);font-weight:400;}
-  .wiz-btn.ghost:hover{border-color:var(--txt);color:var(--txt);filter:none;}
-  .accent-swatches{display:flex;gap:8px;margin-top:6px;}
-  .accent-swatches button{width:28px;height:28px;border-radius:50%;border:2px solid transparent;cursor:pointer;}
-  .accent-swatches button.sel{border-color:var(--txt);}
-  /* search mode toggle */
-  .mode-toggle{display:flex;gap:6px;margin:10px 0 4px;}
-  .mode-toggle .mode{background:var(--panel);border:1px solid var(--line-hi);color:var(--muted);
-    border-radius:6px;padding:6px 14px;font-family:var(--mono);font-size:12px;cursor:pointer;}
-  .mode-toggle .mode.on{background:var(--accent);border-color:var(--accent);color:#fff;}
-
-  /* poster grid (TMDb title search) */
-  .poster-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:14px;margin-top:10px;}
+  /* poster grid */
+  .poster-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:16px;margin-top:8px;}
   .poster{background:var(--panel);border:1px solid var(--line);border-radius:10px;overflow:hidden;
-    cursor:pointer;transition:border-color .15s,transform .15s;display:flex;flex-direction:column;}
+    cursor:pointer;transition:border-color .15s,transform .15s;}
   .poster:hover{border-color:var(--accent);transform:translateY(-2px);}
   .poster .img{aspect-ratio:2/3;background:var(--panel2) center/cover no-repeat;display:flex;
     align-items:center;justify-content:center;color:var(--muted);font-size:11px;}
-  .poster .meta{padding:8px 10px;}
+  .poster .meta{padding:9px 11px;}
   .poster .pt{font-size:12px;font-weight:600;line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-  .poster .py{font-size:11px;color:var(--muted);display:flex;justify-content:space-between;margin-top:2px;}
-  .poster .badge-type{font-size:9px;padding:1px 5px;border-radius:3px;border:1px solid var(--line-hi);}
-  .poster .badge-type.movie{color:var(--accent);} .poster .badge-type.tv{color:var(--purple);}
+  .poster .py{font-size:11px;color:var(--muted);margin-top:2px;}
 
-  /* generic modal (settings, stats) */
-  .modal-overlay{position:fixed;inset:0;background:rgba(5,8,12,.78);backdrop-filter:blur(3px);
-    z-index:150;display:none;align-items:center;justify-content:center;padding:20px;}
-  .modal-overlay.show{display:flex;}
-  .modal{width:640px;max-width:96vw;max-height:90vh;background:var(--bg);border:1px solid var(--line-hi);
-    border-radius:14px;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,.6);}
-  .modal-head{display:flex;align-items:center;padding:18px 22px;border-bottom:1px solid var(--line);}
-  .modal-head h2{font-size:16px;margin:0;}
-  .modal-close{margin-left:auto;background:none;border:none;color:var(--muted);font-size:22px;cursor:pointer;}
-  .modal-body{overflow-y:auto;padding:18px 22px;flex:1;}
-  .modal-foot{padding:14px 22px;border-top:1px solid var(--line);text-align:right;}
-  .set-group{margin-bottom:18px;} .set-group h3{font-size:12px;color:var(--muted);text-transform:uppercase;
-    letter-spacing:.5px;margin:0 0 8px;}
-  .set-row{margin-bottom:10px;} .set-row label{display:block;font-size:12px;color:var(--muted);margin-bottom:4px;}
-  .set-row input,.set-row select{width:100%;background:var(--panel);color:var(--txt);border:1px solid var(--line-hi);
-    border-radius:6px;padding:9px 11px;font-family:var(--mono);font-size:13px;}
-  .stat-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:12px;margin-bottom:20px;}
-  .stat-card{background:var(--panel);border:1px solid var(--line);border-radius:9px;padding:14px;}
-  .stat-card .num{font-size:22px;font-weight:600;} .stat-card .lbl{font-size:11px;color:var(--muted);margin-top:2px;}
-  .hist-row{display:flex;gap:10px;padding:7px 0;border-bottom:1px solid var(--line);font-size:12px;align-items:baseline;}
-  .hist-row .ht{color:var(--muted);font-size:10px;white-space:nowrap;}
-  .hist-row .he{font-size:10px;padding:1px 6px;border-radius:3px;border:1px solid var(--line-hi);white-space:nowrap;}
-  .hist-row .hn{flex:1;word-break:break-word;}
-  .tag.ctype{font-weight:600;}
-  .tag.ctype.game{background:rgba(163,113,247,.15);color:var(--purple);border-color:rgba(163,113,247,.3);}
-  .tag.ctype.movie{background:rgba(47,129,247,.15);color:var(--accent);border-color:rgba(47,129,247,.3);}
-  .tag.ctype.tv{background:rgba(63,185,80,.15);color:var(--good);border-color:rgba(63,185,80,.3);}
-  .tag.platform{background:var(--panel2);color:var(--muted);}
-  /* quality profiles */
+  /* library/movie cards */
+  .cardgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px;}
+  .lcard{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px;display:flex;gap:12px;}
+  .lcard .pimg{width:64px;height:96px;border-radius:6px;background:var(--panel2) center/cover no-repeat;flex-shrink:0;
+    display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:9px;text-align:center;}
+  .lcard .body{flex:1;min-width:0;}
+  .lcard .lt{font-weight:600;font-size:14px;}
+  .lcard .ly{color:var(--muted);font-size:12px;margin-bottom:6px;}
+  .lcard .lmeta{font-size:12px;color:var(--muted);display:flex;flex-wrap:wrap;gap:6px;align-items:center;}
+  .lbar{height:6px;background:var(--line-hi);border-radius:3px;margin-top:8px;overflow:hidden;}
+  .lbar i{display:block;height:100%;background:var(--good);transition:width .3s;}
+  .lbar i.partial{background:var(--warn);}
+  .lcard .lact{margin-top:8px;display:flex;gap:10px;}
+  .link-btn{background:none;border:none;color:var(--accent);cursor:pointer;font-family:var(--mono);font-size:12px;padding:0;}
+  .link-btn.danger{color:var(--bad);}
+  .pill{font-size:10px;padding:1px 7px;border-radius:10px;border:1px solid var(--line-hi);}
+  .pill.want{background:rgba(210,153,34,.15);color:var(--warn);border-color:rgba(210,153,34,.3);}
+  .pill.have{background:rgba(63,185,80,.15);color:var(--good);border-color:rgba(63,185,80,.3);}
+
+  /* generic card list (profiles, subs) */
   .prof-card{background:var(--panel);border:1px solid var(--line);border-radius:9px;padding:12px 14px;margin-bottom:10px;}
   .prof-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;}
   .prof-meta{display:flex;flex-wrap:wrap;gap:5px;align-items:center;font-size:12px;}
   .prof-meta .muted{color:var(--muted);}
-  .link-btn{background:none;border:none;color:var(--accent);cursor:pointer;font-family:var(--mono);font-size:12px;padding:0 4px;}
-  .link-btn.danger{color:var(--bad);}
   .chips{display:flex;flex-wrap:wrap;gap:6px;}
   .chip{background:var(--panel2);border:1px solid var(--line-hi);border-radius:14px;padding:4px 12px;
     font-size:12px;cursor:pointer;color:var(--muted);user-select:none;}
   .chip.on{background:var(--accent);border-color:var(--accent);color:#fff;}
-  /* toggle switch */
   .switch{position:relative;display:inline-block;width:34px;height:18px;vertical-align:middle;}
   .switch input{opacity:0;width:0;height:0;}
   .switch span{position:absolute;cursor:pointer;inset:0;background:var(--line-hi);border-radius:18px;transition:.2s;}
   .switch span:before{content:"";position:absolute;height:12px;width:12px;left:3px;bottom:3px;background:#fff;border-radius:50%;transition:.2s;}
   .switch input:checked+span{background:var(--accent);}
   .switch input:checked+span:before{transform:translateX(16px);}
-  /* library progress bar */
-  .lib-bar{height:5px;background:var(--line-hi);border-radius:3px;margin-top:8px;overflow:hidden;}
-  .lib-bar i{display:block;height:100%;background:var(--good);border-radius:3px;transition:width .3s;}
-  @media (max-width:640px){td.trk,th.trk{display:none;}}
+
+  .empty{color:var(--muted);padding:30px 0;text-align:center;}
+  .muted{color:var(--muted);} .hint{font-size:11px;color:var(--muted);margin-top:4px;}
+  .row2{display:grid;grid-template-columns:1fr 1fr;gap:0 12px;}
+
+  /* activity dock (drawer) */
+  .drawer{position:fixed;top:0;right:0;bottom:0;width:420px;max-width:92vw;background:var(--bg);
+    border-left:1px solid var(--line-hi);z-index:80;transform:translateX(100%);transition:transform .2s;
+    display:flex;flex-direction:column;}
+  .drawer.show{transform:translateX(0);}
+  .drawer-head{display:flex;align-items:center;gap:10px;padding:16px 18px;border-bottom:1px solid var(--line);}
+  .drawer-head h2{font-size:15px;margin:0;}
+  .drawer-tabs{display:flex;gap:6px;margin-left:8px;}
+  .drawer-tabs button{background:none;border:none;color:var(--muted);cursor:pointer;font-family:var(--mono);font-size:12px;padding:4px 8px;border-radius:5px;}
+  .drawer-tabs button.on{background:var(--panel2);color:var(--txt);}
+  .drawer-close{margin-left:auto;background:none;border:none;color:var(--muted);font-size:20px;cursor:pointer;}
+  .drawer-body{flex:1;overflow-y:auto;padding:14px 18px;}
+  .xfer{padding:9px 0;border-bottom:1px solid var(--line);font-size:12px;}
+  .xfer .xt{word-break:break-word;margin-bottom:4px;}
+  .xfer .xbar{height:5px;background:var(--line);border-radius:3px;overflow:hidden;margin:4px 0;}
+  .xfer .xbar i{display:block;height:100%;background:var(--accent);}
+  .xfer .xmeta{color:var(--muted);display:flex;gap:10px;flex-wrap:wrap;}
+  .xfer .xact{margin-top:5px;display:flex;gap:8px;}
+  .hist-row{display:flex;gap:10px;padding:7px 0;border-bottom:1px solid var(--line);font-size:12px;align-items:baseline;}
+  .hist-row .ht{color:var(--muted);font-size:10px;white-space:nowrap;}
+  .hist-row .he{font-size:10px;padding:1px 6px;border-radius:3px;border:1px solid var(--line-hi);white-space:nowrap;}
+  .hist-row .hn{flex:1;word-break:break-word;}
+  .stat-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:10px;margin-bottom:16px;}
+  .stat-card{background:var(--panel);border:1px solid var(--line);border-radius:9px;padding:12px;}
+  .stat-card .num{font-size:20px;font-weight:600;} .stat-card .lbl{font-size:10px;color:var(--muted);margin-top:2px;}
+
+  /* toast */
+  .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%) translateY(80px);
+    background:var(--panel);border:1px solid var(--line-hi);border-radius:8px;padding:11px 18px;
+    font-size:13px;z-index:200;transition:transform .25s;box-shadow:0 8px 30px rgba(0,0,0,.5);}
+  .toast.show{transform:translateX(-50%) translateY(0);}
+  .toast.err{border-color:var(--bad);color:var(--bad);}
+
+  /* overlay modal (forms: add show/movie, profile edit) */
+  .modal-overlay{position:fixed;inset:0;background:rgba(5,8,12,.78);backdrop-filter:blur(3px);
+    z-index:150;display:none;align-items:center;justify-content:center;padding:20px;}
+  .modal-overlay.show{display:flex;}
+  .modal{width:600px;max-width:96vw;max-height:90vh;background:var(--bg);border:1px solid var(--line-hi);
+    border-radius:14px;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,.6);}
+  .modal-head{display:flex;align-items:center;padding:18px 22px;border-bottom:1px solid var(--line);}
+  .modal-head h2{font-size:16px;margin:0;}
+  .modal-close{margin-left:auto;background:none;border:none;color:var(--muted);font-size:22px;cursor:pointer;}
+  .modal-body{overflow-y:auto;padding:18px 22px;flex:1;}
+  @media (max-width:640px){.navlink{padding:8px 10px;} td.trk,th.trk{display:none;}}
 </style>
 </head>
 <body>
+
+<nav class="topnav">
+  <span class="brand">Cascade<span class="dot">.</span></span>
+  <span class="navlink on" data-page="search">Search</span>
+  <span class="navlink" data-page="shows">Shows</span>
+  <span class="navlink" data-page="movies">Movies</span>
+  <span class="navlink" data-page="subs">Auto-grab</span>
+  <span class="navlink" data-page="profiles">Profiles</span>
+  <span class="navspacer"></span>
+  <button class="navbtn" id="activityBtn">Activity <span class="badge zero" id="activeCount">0</span></button>
+  <button class="navbtn" id="settingsBtn">Settings</button>
+</nav>
+
 <div class="wrap">
-  <header>
-    <h1>cascade<span class="dot">·</span></h1>
-    <span class="sub">search &amp; manage</span>
-    <span class="spacer"></span>
-    <button class="activity-btn" id="libraryBtn" title="Library &amp; monitored shows">📚</button>
-    <button class="activity-btn" id="subsBtn" title="Auto-grab subscriptions">📡</button>
-    <button class="activity-btn" id="profilesBtn" title="Quality profiles">🎯</button>
-    <button class="activity-btn" id="statsBtn" title="History &amp; stats">📊</button>
-    <button class="activity-btn" id="settingsBtn" title="Settings">⚙️</button>
-    <button class="activity-btn" id="activityBtn">Activity <span class="badge-count zero" id="activeCount">0</span></button>
-  </header>
 
-  <div class="mode-toggle" id="modeToggle" hidden>
-    <button class="mode on" data-mode="title">🎬 by title</button>
-    <button class="mode" data-mode="release">⚙️ by release</button>
-  </div>
-
-  <!-- stats bar -->
-  <div class="statsbar" id="statsbar">
-    <div class="stat"><span class="k">Disk free</span><span class="v" id="stDisk">—</span><span class="diskbar"><i id="stDiskBar"></i></span></div>
-    <div class="stat"><span class="k">↓ total</span><span class="v" id="stDown">—</span></div>
-    <div class="stat"><span class="k">↑ total</span><span class="v" id="stUp">—</span></div>
-    <div class="stat"><span class="k">Downloading</span><span class="v" id="stDl">—</span></div>
-    <div class="stat"><span class="k">Seeding</span><span class="v" id="stSeed">—</span></div>
-  </div>
-
-  <form class="bar" id="searchForm">
-    <div class="searchwrap">
-      <input type="text" id="q" placeholder="search… ↑↓ history · ↵ to add selected" autocomplete="off" autofocus>
-      <div class="history" id="history"></div>
+  <!-- ============ SEARCH PAGE ============ -->
+  <section class="page on" id="page-search">
+    <div class="statsbar" id="statsbar"></div>
+    <div class="mode-toggle" id="modeToggle" hidden>
+      <button class="mode on" data-mode="title">by title</button>
+      <button class="mode" data-mode="release">by release</button>
     </div>
-    <select id="cat"><option value="all">all</option><option value="movies">🎬 movies</option><option value="tv">📺 tv</option><option value="games">🎮 games</option><option value="console">🕹️ console</option><option value="pc">💻 pc</option><option value="music">🎵 music</option><option value="books">📚 books</option></select>
-    <button type="submit" class="go" id="goBtn">search</button>
-  </form>
-
-  <div class="filters" id="filters" hidden>
-    <label>min seed <input type="number" id="fSeed" min="0" value="0"></label>
-    <label>res
-      <select id="fRes"><option value="">any</option><option>2160p</option><option>1080p</option><option>720p</option><option>480p</option></select>
-    </label>
-    <label>source
-      <select id="fSrc"><option value="">any</option><option>BluRay</option><option>WEB-DL</option><option>WEBRip</option><option>HDTV</option><option>REMUX</option></select>
-    </label>
-    <span class="kbhint">↑↓ move · ↵ add · esc clear</span>
-  </div>
-
-  <div class="status" id="status"></div>
-
-  <table id="resultsTable" hidden>
-    <thead><tr>
-      <th class="sortable" data-sort="seeders" style="width:60px">seed <span class="arrow" id="ar-seeders">▼</span></th>
-      <th class="sortable" data-sort="size" style="width:90px">size <span class="arrow" id="ar-size"></span></th>
-      <th class="trk" style="width:120px">tracker</th>
-      <th>title</th>
-      <th style="width:70px"></th>
-    </tr></thead>
-    <tbody id="rows"></tbody>
-  </table>
-  <button class="loadmore" id="loadMore" hidden>load more</button>
-  <div class="empty" id="empty" hidden></div>
-
-  <!-- TMDb poster results -->
-  <div class="poster-grid" id="posterGrid" hidden></div>
-</div>
-
-<!-- settings modal -->
-<div class="modal-overlay" id="setOverlay">
-  <div class="modal">
-    <div class="modal-head"><h2>Settings</h2><button class="modal-close" id="setClose">×</button></div>
-    <div class="modal-body" id="setBody"></div>
-    <div class="modal-foot"><button class="wiz-btn" id="setSave">save changes</button></div>
-  </div>
-</div>
-
-<!-- stats modal -->
-<div class="modal-overlay" id="statsOverlay">
-  <div class="modal">
-    <div class="modal-head"><h2>History &amp; stats</h2><button class="modal-close" id="statsClose">×</button></div>
-    <div class="modal-body" id="statsBody"></div>
-  </div>
-</div>
-
-<!-- quality profiles modal -->
-<div class="modal-overlay" id="profOverlay">
-  <div class="modal">
-    <div class="modal-head"><h2>Quality profiles</h2><button class="modal-close" id="profClose">×</button></div>
-    <div class="modal-body" id="profBody"></div>
-    <div class="modal-foot"><button class="wiz-btn" id="profNew">+ new profile</button></div>
-  </div>
-</div>
-
-<!-- library & monitored shows modal -->
-<div class="modal-overlay" id="libOverlay">
-  <div class="modal">
-    <div class="modal-head"><h2>Library &amp; monitored shows</h2><button class="modal-close" id="libClose">×</button></div>
-    <div class="modal-body" id="libBody"></div>
-    <div class="modal-foot" style="display:flex;justify-content:space-between;align-items:center">
-      <span id="libStatus" style="font-size:11px;color:var(--muted)"></span>
-      <span><button class="wiz-btn ghost" id="libScan">scan + hunt now</button>
-      <button class="wiz-btn" id="libAdd">+ add show</button></span>
+    <form class="bar" id="searchForm">
+      <div class="searchwrap">
+        <input type="text" id="q" placeholder="search by title… e.g. dune" autocomplete="off">
+        <div class="history" id="history"></div>
+      </div>
+      <select id="cat">
+        <option value="all">all</option><option value="movies">movies</option>
+        <option value="tv">tv</option><option value="games">games</option>
+        <option value="console">console</option><option value="pc">pc</option>
+        <option value="music">music</option><option value="books">books</option>
+      </select>
+      <button class="btn" id="goBtn" type="submit">search</button>
+    </form>
+    <div class="filters" id="filters" hidden>
+      <label>min seed <input type="number" id="fSeed" value="0" min="0"></label>
+      <label>res <select id="fRes"><option value="">any</option><option>2160p</option><option>1080p</option><option>720p</option><option>480p</option></select></label>
+      <label>source <select id="fSrc"><option value="">any</option><option>BluRay</option><option>WEB-DL</option><option>WEBRip</option><option>HDTV</option><option>REMUX</option></select></label>
     </div>
-  </div>
-</div>
+    <div id="status" class="muted" style="font-size:12px;min-height:18px;"></div>
+    <div class="poster-grid" id="posterGrid" hidden></div>
+    <table id="resultsTable" hidden>
+      <thead><tr><th>title</th><th>size</th><th>health</th><th class="trk">tracker</th><th></th></tr></thead>
+      <tbody id="rows"></tbody>
+    </table>
+    <div class="empty" id="searchEmpty" hidden></div>
+  </section>
 
-<!-- subscriptions (auto-grab) modal -->
-<div class="modal-overlay" id="subsOverlay">
-  <div class="modal">
-    <div class="modal-head"><h2>Auto-grab subscriptions</h2><button class="modal-close" id="subsClose">×</button></div>
-    <div class="modal-body" id="subsBody"></div>
-    <div class="modal-foot" style="display:flex;justify-content:space-between;align-items:center">
-      <span id="subsStatus" style="font-size:11px;color:var(--muted)"></span>
-      <span><button class="wiz-btn ghost" id="subsCheck">check now</button>
-      <button class="wiz-btn" id="subsNew">+ follow</button></span>
+  <!-- ============ SHOWS PAGE ============ -->
+  <section class="page" id="page-shows">
+    <div class="page-head">
+      <h1>Shows</h1><span class="count" id="showsCount"></span>
+      <div class="ph-actions">
+        <button class="btn ghost" id="showsScan">scan + hunt</button>
+        <button class="btn" id="showsAdd">+ add show</button>
+      </div>
     </div>
-  </div>
+    <div class="cardgrid" id="showsGrid"></div>
+    <div class="empty" id="showsEmpty" hidden>No monitored shows yet. Add one and Cascade tracks its episodes, scans your library, and hunts the missing ones.</div>
+  </section>
+
+  <!-- ============ MOVIES PAGE ============ -->
+  <section class="page" id="page-movies">
+    <div class="page-head">
+      <h1>Movies</h1><span class="count" id="moviesCount"></span>
+      <div class="ph-actions">
+        <button class="btn ghost" id="moviesScan">scan + hunt</button>
+        <button class="btn" id="moviesAdd">+ add movie</button>
+      </div>
+    </div>
+    <div class="cardgrid" id="moviesGrid"></div>
+    <div class="empty" id="moviesEmpty" hidden>No monitored movies yet. Add one and Cascade will grab it if it's not already in your library.</div>
+  </section>
+
+  <!-- ============ AUTO-GRAB PAGE ============ -->
+  <section class="page" id="page-subs">
+    <div class="page-head">
+      <h1>Auto-grab</h1><span class="count" id="subsCount"></span>
+      <div class="ph-actions">
+        <button class="btn ghost" id="subsCheck">check now</button>
+        <button class="btn" id="subsNew">+ follow</button>
+      </div>
+    </div>
+    <div id="subsStatus" class="hint" style="margin-bottom:12px;"></div>
+    <div id="subsList"></div>
+    <div class="empty" id="subsEmpty" hidden>No subscriptions. Follow a search query to auto-grab new releases on a timer.</div>
+  </section>
+
+  <!-- ============ PROFILES PAGE ============ -->
+  <section class="page" id="page-profiles">
+    <div class="page-head">
+      <h1>Quality profiles</h1><span class="count" id="profCount"></span>
+      <div class="ph-actions"><button class="btn" id="profNew">+ new profile</button></div>
+    </div>
+    <div id="profList"></div>
+  </section>
+
 </div>
 
-<div class="dock hidden" id="dock">
-  <div class="dock-head" id="dockHead">
-    <span class="t">Downloads</span><span class="c" id="dockCount">0 active</span>
-    <span class="expand" id="dockExpand">full view ↗</span>
-  </div>
-  <div class="dock-body" id="dockBody"></div>
-</div>
-
-<div class="overlay" id="overlay"></div>
-<aside class="panel" id="panel">
-  <div class="panel-head">
+<!-- activity drawer -->
+<div class="drawer" id="drawer">
+  <div class="drawer-head">
     <h2>Activity</h2>
-    <div class="panel-tabs">
-      <button class="on" id="tabXfers" data-tab="xfers">Transfers</button>
-      <button id="tabEvents" data-tab="events">Events</button>
+    <div class="drawer-tabs">
+      <button class="on" data-tab="transfers" id="tabXfer">Transfers</button>
+      <button data-tab="events" id="tabEvents">Events</button>
+      <button data-tab="stats" id="tabStats">Stats</button>
     </div>
-    <button class="close" id="panelClose">×</button>
+    <button class="drawer-close" id="drawerClose">×</button>
   </div>
-  <div class="panel-body" id="panelBody"></div>
-</aside>
+  <div class="drawer-body" id="drawerBody"></div>
+</div>
 
-<!-- first-run setup wizard -->
-<div class="wiz-overlay" id="wizOverlay">
-  <div class="wiz">
-    <div class="wiz-head">
-      <span class="wiz-logo">🌊</span>
-      <div><div class="wiz-title">Welcome to Cascade</div><div class="wiz-sub" id="wizStep">Step 1 of 3 · Indexer</div></div>
-    </div>
-    <div class="wiz-body" id="wizBody"></div>
-    <div class="wiz-foot">
-      <button class="wiz-btn ghost" id="wizBack" style="visibility:hidden">back</button>
-      <div class="wiz-dots" id="wizDots"></div>
-      <button class="wiz-btn" id="wizNext">next</button>
-    </div>
+<!-- generic form modal -->
+<div class="modal-overlay" id="modal">
+  <div class="modal">
+    <div class="modal-head"><h2 id="modalTitle"></h2><button class="modal-close" id="modalClose">×</button></div>
+    <div class="modal-body" id="modalBody"></div>
   </div>
 </div>
 
 <div class="toast" id="toast"></div>
 
 <script>
-const $ = id => document.getElementById(id);
-const esc = s => { const d=document.createElement("div"); d.textContent = s==null?"":s; return d.innerHTML; };
-const GB = 1024**3;
-let BIG_DOWNLOAD = 20*GB; Object.defineProperty(window,"__setBig",{value:g=>BIG_DOWNLOAD=g*GB});          // warn threshold for a single torrent
-const LOW_DISK_PCT = 90;             // disk used % that flips the bar to bad
-function seedClass(n){ return n>=20?"seed-good":n>=3?"seed-mid":"seed-bad"; }
-function toast(m,kind){ const t=$("toast"); t.textContent=m; t.className="toast show"+(kind?" "+kind:"");
-  clearTimeout(t._t); t._t=setTimeout(()=>t.classList.remove("show"),3400); }
+// ============ core helpers ============
+const $=id=>document.getElementById(id);
+function toast(msg,kind){const t=$("toast");t.textContent=msg;t.className="toast show"+(kind==="err"?" err":"");setTimeout(()=>t.className="toast",2600);}
+function esc(s){return String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]));}
+function human(n){if(!n)return"0 B";const u=["B","KB","MB","GB","TB"];let i=0,v=n;while(v>=1024&&i<u.length-1){v/=1024;i++;}return v.toFixed(v<10&&i>0?1:0)+" "+u[i];}
+async function jget(u){const r=await fetch(u);if(!r.ok)throw new Error(r.status);return r.json();}
+async function jsend(u,m,b){const r=await fetch(u,{method:m,headers:{"Content-Type":"application/json"},body:b?JSON.stringify(b):undefined});if(!r.ok)throw new Error((await r.json().catch(()=>({}))).detail||r.status);return r.json();}
 
-/* ---------------- search history (in-memory + sessionStorage-free) ---------------- */
-let history = [];
-try { history = JSON.parse(window.name||"[]"); if(!Array.isArray(history)) history=[]; } catch(_){ history=[]; }
-function saveHistory(){ try{ window.name=JSON.stringify(history.slice(0,12)); }catch(_){} }
-function addHistory(q){ q=q.trim(); if(!q) return; history=history.filter(h=>h!==q); history.unshift(q); history=history.slice(0,12); saveHistory(); }
-let histSel=-1;
-function renderHistory(filter){
-  const box=$("history"); const items=history.filter(h=>!filter||h.toLowerCase().includes(filter.toLowerCase()));
-  if(!items.length){ box.classList.remove("show"); return; }
-  box.innerHTML=items.map((h,i)=>`<div data-h="${esc(h)}" class="${i===histSel?'sel':''}"><span class="ico">↻</span>${esc(h)}</div>`).join("");
-  box.classList.add("show");
-  box.querySelectorAll("div[data-h]").forEach(d=>d.addEventListener("mousedown",e=>{e.preventDefault(); $("q").value=d.dataset.h; hideHistory(); doSearch();}));
+// ============ navigation ============
+const PAGES=["search","shows","movies","subs","profiles"];
+function nav(page){
+  PAGES.forEach(p=>{ $("page-"+p).classList.toggle("on",p===page);
+    document.querySelector(`.navlink[data-page="${p}"]`).classList.toggle("on",p===page); });
+  if(page==="shows")loadShows();
+  if(page==="movies")loadMovies();
+  if(page==="subs")loadSubs();
+  if(page==="profiles")loadProfiles();
 }
-function hideHistory(){ $("history").classList.remove("show"); histSel=-1; }
-$("q").addEventListener("focus",()=>{ if(!$("q").value) renderHistory(""); });
-$("q").addEventListener("input",()=>{ histSel=-1; renderHistory($("q").value); });
-$("q").addEventListener("blur",()=>setTimeout(hideHistory,150));
+document.querySelectorAll(".navlink").forEach(l=>l.addEventListener("click",()=>nav(l.dataset.page)));
 
-/* ---------------- search + client-side sort/filter/paginate ---------------- */
-let allResults=[];          // full set from server
-let sortKey="seeders", sortDir=-1;
-let shown=0; const PAGE=25;
-let kbSel=-1;               // keyboard-selected visible row index
-
-$("searchForm").addEventListener("submit",e=>{e.preventDefault(); doSearch();});
+// ============ search ============
+let allResults=[],searchMode="release",metaEnabled=false,searchHistory=[];
+function setMode(m){searchMode=m;document.querySelectorAll("#modeToggle .mode").forEach(b=>b.classList.toggle("on",b.dataset.mode===m));
+  $("posterGrid").hidden=true;$("posterGrid").innerHTML="";$("resultsTable").hidden=true;$("rows").innerHTML="";$("filters").hidden=true;$("searchEmpty").hidden=true;
+  $("q").placeholder=m==="title"?"search by title… e.g. dune":"search by release… e.g. dune 2024 1080p";}
+document.querySelectorAll("#modeToggle .mode").forEach(b=>b.addEventListener("click",()=>setMode(b.dataset.mode)));
+$("searchForm").addEventListener("submit",e=>{e.preventDefault();doSearch();});
 
 async function doSearch(){
-  const q=$("q").value.trim(); if(!q) return;
-  addHistory(q); hideHistory();
-  $("goBtn").disabled=true; $("status").textContent="searching…";
-  $("resultsTable").hidden=true; $("empty").hidden=true; $("loadMore").hidden=true; $("rows").innerHTML="";
-  $("filters").hidden=true; kbSel=-1;
+  if(searchMode==="title"&&metaEnabled)return doTitleSearch();
+  const q=$("q").value.trim();if(!q)return;
+  $("goBtn").disabled=true;$("status").textContent="searching…";$("posterGrid").hidden=true;$("searchEmpty").hidden=true;
   try{
-    const r=await fetch(`/api/search?q=${encodeURIComponent(q)}&cat=${$("cat").value}&limit=150`);
-    if(!r.ok) throw new Error((await r.json()).detail||r.statusText);
-    const d=await r.json(); allResults=d.results||[];
-    if(!allResults.length){ $("status").textContent=""; $("empty").hidden=false; $("empty").textContent="No results. Try fewer words or a different category."; return; }
-    $("filters").hidden=false;
-    applyView(true);
-  }catch(err){ $("status").textContent=""; $("empty").hidden=false; $("empty").textContent=`Search failed: ${err.message}`; }
-  finally{ $("goBtn").disabled=false; }
+    const d=await jget(`/api/search?q=${encodeURIComponent(q)}&cat=${$("cat").value}&limit=150`);
+    allResults=d.results||[];
+    if(!allResults.length){$("status").textContent="";$("resultsTable").hidden=true;$("searchEmpty").hidden=false;$("searchEmpty").textContent="No results. Try fewer words or a different category.";return;}
+    $("filters").hidden=false;applyFilters();
+    $("status").textContent=`${allResults.length} results`;
+  }catch(err){$("status").textContent="";$("searchEmpty").hidden=false;$("searchEmpty").textContent="Search failed: "+err.message;}
+  finally{$("goBtn").disabled=false;}
 }
-
-function currentView(){
-  const minSeed=parseInt($("fSeed").value)||0, res=$("fRes").value, src=$("fSrc").value;
-  let v=allResults.filter(r=>r.seeders>=minSeed
-    && (!res || (r.badges&&r.badges.res===res))
-    && (!src || (r.badges&&r.badges.source===src)));
-  v.sort((a,b)=>{ const av=a[sortKey]??0, bv=b[sortKey]??0; return (av<bv?-1:av>bv?1:0)*sortDir; });
-  return v;
-}
-
-function applyView(reset){
-  if(reset) shown=0;
-  const v=currentView();
-  shown=Math.min(Math.max(shown,PAGE), v.length);
-  renderRows(v.slice(0,shown));
-  $("resultsTable").hidden = v.length===0;
-  $("empty").hidden = v.length>0;
-  if(v.length===0){ $("empty").textContent="No results match the current filters."; }
-  $("loadMore").hidden = shown>=v.length;
-  $("status").textContent=`${v.length} of ${allResults.length} results · showing ${Math.min(shown,v.length)}`;
-  // sort arrows
-  ["seeders","size"].forEach(k=>{ const el=$("ar-"+k); if(!el) return;
-    el.textContent = sortKey===k ? (sortDir<0?"▼":"▲") : ""; });
-  kbSel=-1; updateKbSel();
-}
-
-function typeBadge(r){
-  if(!r||!r.ctype) return "";
-  const icons={game:"🎮",movie:"🎬",tv:"📺",audio:"🎵",book:"📚",other:"📦"};
-  let h=`<span class="tag ctype ${esc(r.ctype)}">${icons[r.ctype]||""} ${esc(r.ctype)}</span>`;
-  if(r.platform) h+=`<span class="tag platform">${esc(r.platform)}</span>`;
-  return h;
-}
-function badgeHtml(b){ if(!b) return ""; let h="";
-  if(b.res) h+=`<span class="tag res">${esc(b.res)}</span>`;
-  if(b.source) h+=`<span class="tag src">${esc(b.source)}</span>`;
-  if(b.ext) h+=`<span class="tag ext">${esc(b.ext)}</span>`;
-  return h?`<div class="tags">${h}</div>`:""; }
-
-function healthHtml(r){
-  const total=r.seeders+(r.peers||0); const pct= total? Math.round(r.seeders/total*100):0;
-  return `<span class="health" title="${r.seeders} seed / ${r.peers||0} peers"><i style="width:${pct}%"></i></span>`;
-}
-
-function renderRows(list){
-  $("rows").innerHTML="";
-  list.forEach((r,idx)=>{
-    const big = r.size>=BIG_DOWNLOAD;
-    const tr=document.createElement("tr"); tr.className="result"; tr.dataset.idx=idx;
-    tr.innerHTML=`
-      <td class="seed ${seedClass(r.seeders)}">${r.seeders}${healthHtml(r)}</td>
-      <td class="size">${esc(r.size_h)}</td>
-      <td class="trk">${esc(r.tracker||"")}</td>
-      <td class="title">${esc(r.title)}${typeBadge(r)}${badgeHtml(r.badges)}</td>
-      <td class="act"><button class="add ${big?'warn-size':''}" title="${big?'Large file — confirm':''}">add</button></td>`;
-    tr.querySelector(".add").addEventListener("click",e=>addTorrent(r,e.target));
-    $("rows").appendChild(tr);
-  });
-}
-
-$("loadMore").addEventListener("click",()=>{ shown+=PAGE; applyView(false); });
-document.querySelectorAll("th.sortable").forEach(th=>th.addEventListener("click",()=>{
-  const k=th.dataset.sort; if(sortKey===k) sortDir*=-1; else { sortKey=k; sortDir=-1; } applyView(true);
-}));
-["fSeed","fRes","fSrc"].forEach(id=>$(id).addEventListener("input",()=>applyView(true)));
-
-async function addTorrent(r,btn){
-  if(r.size>=BIG_DOWNLOAD && !confirm(`This is ${r.size_h}. Add anyway?`)) return;
-  // disk guard: if we know free space and it's smaller than the file, warn hard
-  if(lastStats.disk && r.size > lastStats.disk.free){
-    if(!confirm(`Only ${lastStats.disk.free_h} free on disk but this is ${r.size_h}. Add anyway?`)) return;
-  }
-  btn.disabled=true; btn.textContent="…";
-  try{
-    const resp=await fetch("/api/add",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({magnet:r.href,title:r.title})});
-    if(!resp.ok) throw new Error((await resp.json()).detail||resp.statusText);
-    const d=await resp.json();
-    btn.textContent=d.duplicate?"queued":"added"; btn.classList.add("done");
-    toast(d.duplicate?`Already in queue: ${d.name}`:`Added: ${d.name}`);
-    showDock(); pollAll();
-  }catch(err){ btn.disabled=false; btn.textContent="add"; toast(`Add failed: ${err.message}`,"err"); }
-}
-
-/* ---------------- keyboard navigation ---------------- */
-function visibleRows(){ return Array.from($("rows").querySelectorAll("tr.result")); }
-function updateKbSel(){ visibleRows().forEach((tr,i)=>tr.classList.toggle("kbsel",i===kbSel)); }
-document.addEventListener("keydown",e=>{
-  const histOpen=$("history").classList.contains("show");
-  if(histOpen && (e.key==="ArrowDown"||e.key==="ArrowUp"||e.key==="Enter")){
-    const items=$("history").querySelectorAll("div[data-h]"); if(!items.length) return;
-    if(e.key==="ArrowDown"){ histSel=Math.min(histSel+1,items.length-1); e.preventDefault(); }
-    else if(e.key==="ArrowUp"){ histSel=Math.max(histSel-1,0); e.preventDefault(); }
-    else if(e.key==="Enter" && histSel>=0){ $("q").value=items[histSel].dataset.h; hideHistory(); doSearch(); e.preventDefault(); return; }
-    items.forEach((it,i)=>it.classList.toggle("sel",i===histSel)); return;
-  }
-  if($("panel").classList.contains("show") && e.key==="Escape"){ closePanel(); return; }
-  if(document.activeElement===$("q") && e.key!=="ArrowDown" && e.key!=="ArrowUp" && e.key!=="Enter") return;
-  const rows=visibleRows(); if(!rows.length) return;
-  if(e.key==="ArrowDown"){ kbSel=Math.min(kbSel+1,rows.length-1); updateKbSel(); rows[kbSel].scrollIntoView({block:"nearest"}); e.preventDefault(); }
-  else if(e.key==="ArrowUp"){ kbSel=Math.max(kbSel-1,0); updateKbSel(); rows[kbSel].scrollIntoView({block:"nearest"}); e.preventDefault(); }
-  else if(e.key==="Enter" && kbSel>=0){ rows[kbSel].querySelector(".add").click(); e.preventDefault(); }
-  else if(e.key==="Escape"){ $("fSeed").value=0; $("fRes").value=""; $("fSrc").value=""; applyView(true); }
-});
-
-/* ---------------- transfers / stats / events ---------------- */
-let lastTransfers=[], lastStats={}, panelTab="xfers", expandedFiles={};
-function showDock(){ $("dock").classList.remove("hidden"); }
-
-async function pollAll(){ await Promise.all([pollTransfers(), pollStats()]); if($("panel").classList.contains("show")) refreshPanel(); }
-
-async function pollStats(){
-  try{ const r=await fetch("/api/stats"); if(!r.ok) return; lastStats=await r.json();
-    const dk=lastStats.disk;
-    if(dk){ $("stDisk").textContent=dk.free_h+" / "+dk.total_h;
-      const bar=$("stDiskBar"); bar.style.width=dk.pct_used+"%";
-      bar.className = dk.pct_used>=LOW_DISK_PCT?"bad":dk.pct_used>=80?"warn":"";
-      $("stDisk").className="v"+(dk.pct_used>=LOW_DISK_PCT?" bad":dk.pct_used>=80?" warn":""); }
-    $("stDown").textContent=lastStats.down_total_h; $("stUp").textContent=lastStats.up_total_h;
-    $("stDl").textContent=lastStats.downloading; $("stSeed").textContent=lastStats.seeding;
-  }catch(_){}
-}
-
-async function pollTransfers(){
-  try{ const r=await fetch("/api/transfers"); if(!r.ok) return; const d=await r.json(); lastTransfers=d.transfers||[];
-    renderDock(lastTransfers);
-    const active=lastTransfers.filter(t=>!t.done).length;
-    $("activeCount").textContent=active; $("activeCount").classList.toggle("zero",active===0);
-    $("dockCount").textContent=`${active} active · ${lastTransfers.length} total`;
-    if(lastTransfers.length) showDock();
-  }catch(_){}
-}
-
-function barClass(t){ if(t.error) return "err"; if(t.done) return "done"; if(t.status==="stopped") return "stopped"; return ""; }
-function ctlButtons(t){ const tg=t.status==="stopped"
-  ? `<button data-id="${t.id}" data-a="resume">resume</button>` : `<button data-id="${t.id}" data-a="pause">pause</button>`;
-  return tg+`<button class="danger" data-id="${t.id}" data-a="remove">remove</button>`; }
-
-function renderDock(xs){
-  const body=$("dockBody"); const active=xs.filter(t=>!t.done);
-  if(!active.length){ body.innerHTML=`<div class="xfer"><div class="meta">No active downloads</div></div>`; return; }
-  body.innerHTML=active.map(t=>`
-    <div class="xfer">
-      <div class="name" title="${esc(t.name)}">${esc(t.name)}</div>
-      <div class="bar-outer"><div class="bar-inner ${barClass(t)}" style="width:${t.percent}%"></div></div>
-      <div class="meta"><span>${t.percent}%</span><span>${esc(t.down_h)}</span><span>${esc(t.status)}</span><span>eta ${esc(t.eta_h)}</span></div>
-      ${t.error?`<div class="err-msg">${esc(t.error)}</div>`:""}
-      <div class="ctl">${ctlButtons(t)}</div>
-    </div>`).join("");
-  wireControls(body);
-}
-
-/* panel: tabs (transfers | events) */
-function refreshPanel(){ panelTab==="events" ? renderEvents() : renderPanelXfers(); }
-async function renderEvents(){
-  const body=$("panelBody"); 
-  try{ const r=await fetch("/api/events?limit=60"); const d=await r.json(); const evs=d.events||[];
-    if(!evs.length){ body.innerHTML=`<div class="pxfer"><div class="meta">No events yet. They appear here when downloads finish and get sorted.</div></div>`; return; }
-    body.innerHTML=evs.map(e=>{
-      const time=(e.ts||"").replace("T"," ").slice(5,16);
-      return `<div class="evrow"><span class="ev-time">${esc(time)}</span><span class="ev-kind ev-${esc(e.event)}">${esc(e.event)}</span><span class="ev-name">${esc(e.name||e.msg||"")}</span></div>`;
-    }).join("");
-  }catch(_){ body.innerHTML=`<div class="pxfer"><div class="meta">Couldn't load events.</div></div>`; }
-}
-
-function renderPanelXfers(){
-  const body=$("panelBody"); const xs=lastTransfers;
-  if(!xs.length){ body.innerHTML=`<div class="pxfer"><div class="meta">No transfers yet. Add something from search.</div></div>`; return; }
-  body.innerHTML=xs.map(t=>`
-    <div class="pxfer" data-id="${t.id}">
-      <div class="name" data-files="${t.id}" title="click for files">${esc(t.name)}</div>
-      <div class="meta">
-        <span class="st-pill st-${t.status}">${esc(t.status)}</span>
-        <span>${t.percent}%</span><span>${esc(t.size_h)}</span>
-        <span>↓ ${esc(t.down_h)}</span><span>eta ${esc(t.eta_h)}</span><span>ratio ${t.ratio}</span>
-      </div>
-      <div class="bar-outer"><div class="bar-inner ${barClass(t)}" style="width:${t.percent}%"></div></div>
-      ${t.error?`<div class="err-msg">${esc(t.error)}</div>`:""}
-      <div class="ctl">${ctlButtons(t)}<button class="danger" data-id="${t.id}" data-a="remove-data">remove + data</button></div>
-      <div class="filelist ${expandedFiles[t.id]?'show':''}" id="files-${t.id}"></div>
-    </div>`).join("");
-  wireControls(body);
-  body.querySelectorAll(".name[data-files]").forEach(n=>n.addEventListener("click",()=>toggleFiles(n.dataset.files)));
-  // re-load any expanded file lists
-  Object.keys(expandedFiles).forEach(id=>{ if(expandedFiles[id]) loadFiles(id); });
-}
-
-async function toggleFiles(id){
-  expandedFiles[id]=!expandedFiles[id];
-  const el=$("files-"+id); if(!el) return;
-  el.classList.toggle("show",expandedFiles[id]);
-  if(expandedFiles[id]) loadFiles(id);
-}
-async function loadFiles(id){
-  const el=$("files-"+id); if(!el) return;
-  try{ const r=await fetch(`/api/torrent/${id}/files`); if(!r.ok){ el.innerHTML="<div class='filerow'>couldn't load files</div>"; return; }
-    const d=await r.json();
-    el.innerHTML=d.files.map(f=>`<div class="filerow ${f.wanted?'':'skip'}"><span class="fn" title="${esc(f.path)}">${esc(f.name)}</span><span>${f.percent}%</span><span>${esc(f.size_h)}</span></div>`).join("");
-  }catch(_){ el.innerHTML="<div class='filerow'>error</div>"; }
-}
-
-function wireControls(scope){
-  scope.querySelectorAll("button[data-a]").forEach(b=>b.addEventListener("click",async()=>{
-    const id=b.dataset.id, action=b.dataset.a;
-    if(action.startsWith("remove") && !confirm(action==="remove-data"?"Remove torrent AND delete files?":"Remove torrent from the list?")) return;
-    b.disabled=true;
-    try{ const r=await fetch(`/api/torrent/${id}`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({action})});
-      if(!r.ok) throw new Error((await r.json()).detail||r.statusText);
-      toast(`${action} ok`); pollAll();
-    }catch(err){ b.disabled=false; toast(`${action} failed: ${err.message}`,"err"); }
-  }));
-}
-
-/* panel open/close + tabs + dock collapse */
-$("dockHead").addEventListener("click",e=>{ if(e.target.id==="dockExpand"){ openPanel(); return; } $("dock").classList.toggle("collapsed"); });
-function openPanel(){ $("overlay").classList.add("show"); $("panel").classList.add("show"); refreshPanel(); }
-function closePanel(){ $("overlay").classList.remove("show"); $("panel").classList.remove("show"); }
-$("activityBtn").addEventListener("click",openPanel);
-$("panelClose").addEventListener("click",closePanel);
-$("overlay").addEventListener("click",closePanel);
-$("tabXfers").addEventListener("click",()=>{ panelTab="xfers"; $("tabXfers").classList.add("on"); $("tabEvents").classList.remove("on"); refreshPanel(); });
-$("tabEvents").addEventListener("click",()=>{ panelTab="events"; $("tabEvents").classList.add("on"); $("tabXfers").classList.remove("on"); refreshPanel(); });
-
-
-/* ---------------- app config / theming ---------------- */
-async function loadConfig(){
-  try{ const r=await fetch("/api/config"); if(!r.ok) return; const cfg=await r.json();
-    if(cfg.title){ document.title=cfg.title; const h=document.querySelector("h1");
-      if(h) h.innerHTML=esc(cfg.title.replace(/.$/,m=>m))+'<span class="dot">·</span>'; }
-    let theme=cfg.theme||"dark";
-    if(theme==="auto") theme=window.matchMedia&&window.matchMedia("(prefers-color-scheme: light)").matches?"light":"dark";
-    document.body.dataset.theme=theme;
-    document.body.dataset.accent=cfg.accent||"blue";
-    if(typeof cfg.big_download_gb==="number") window.__setBig(cfg.big_download_gb);
-  }catch(_){}
-}
-/* ---------------- first-run setup wizard ---------------- */
-const wizState = {
-  step: 0,
-  data: { jackett_url:"http://localhost:9117", jackett_api_key:"", jackett_indexer:"all",
-    client_kind:"transmission", client_url:"http://localhost:9091/transmission/rpc",
-    client_user:"", client_pass:"", library_root:"/library", download_dir:"/downloads",
-    notify_urls:"", ui_accent:"blue", app_title:"Cascade" },
-  tested: { indexer:false, client:false },
-};
-const CLIENT_DEFAULTS = {
-  transmission:"http://localhost:9091/transmission/rpc",
-  qbittorrent:"http://localhost:8080",
-  deluge:"http://localhost:8112",
-};
-const ACCENTS = ["blue","green","purple","amber","rose"];
-const ACCENT_HEX = {blue:"#2f81f7",green:"#3fb950",purple:"#a371f7",amber:"#d29922",rose:"#f778ba"};
-
-function wizSteps(){ return [
-  { title:"Indexer", render:()=>`
-    <div class="wiz-intro">Cascade searches through <b>Jackett</b> (or Prowlarr). Add a few indexers in its dashboard, then paste the API key here.</div>
-    <label>Jackett URL</label>
-    <input id="w_jurl" value="${esc(wizState.data.jackett_url)}" placeholder="http://localhost:9117">
-    <label>API key</label>
-    <input id="w_jkey" value="${esc(wizState.data.jackett_api_key)}" placeholder="from Jackett dashboard, top-right">
-    <div class="hint">Open Jackett at its URL → add indexers → copy the <b>API Key</b> shown top-right.</div>
-    <div class="test-row">
-      <button class="wiz-btn ghost" id="w_testIdx">test connection</button>
-      <span class="test-result" id="w_idxResult"></span>
-    </div>` },
-  { title:"Download client", render:()=>`
-    <div class="wiz-intro">Which torrent client should Cascade drive? It works with all three — pick what you run.</div>
-    <label>Client</label>
-    <select id="w_ckind">
-      ${["transmission","qbittorrent","deluge"].map(k=>`<option value="${k}" ${wizState.data.client_kind===k?"selected":""}>${k}</option>`).join("")}
-    </select>
-    <label>Client URL</label>
-    <input id="w_curl" value="${esc(wizState.data.client_url)}">
-    <div class="wiz-grid2">
-      <div><label>Username</label><input id="w_cuser" value="${esc(wizState.data.client_user)}" placeholder="${wizState.data.client_kind==='deluge'?'(not used)':''}"></div>
-      <div><label>Password</label><input id="w_cpass" type="password" value="${esc(wizState.data.client_pass)}"></div>
-    </div>
-    <div class="test-row">
-      <button class="wiz-btn ghost" id="w_testCli">test connection</button>
-      <span class="test-result" id="w_cliResult"></span>
-    </div>` },
-  { title:"Library & finish", render:()=>`
-    <div class="wiz-intro">Where should finished media land, and how should it look?</div>
-    <label>Library root <span class="hint" style="display:inline">(movies/ &amp; tvshows/ go here)</span></label>
-    <input id="w_lib" value="${esc(wizState.data.library_root)}">
-    <label>App name</label>
-    <input id="w_title" value="${esc(wizState.data.app_title)}">
-    <label>Accent color</label>
-    <div class="accent-swatches" id="w_accents">
-      ${ACCENTS.map(a=>`<button data-a="${a}" class="${wizState.data.ui_accent===a?'sel':''}" style="background:${ACCENT_HEX[a]}"></button>`).join("")}
-    </div>
-    <label>Notifications <span class="hint" style="display:inline">(optional)</span></label>
-    <input id="w_notify" value="${esc(wizState.data.notify_urls)}" placeholder="discord://… , ntfy://ntfy.sh/topic">
-    <div class="hint">Comma-separated. Supports Discord, Telegram, ntfy, Gotify, or any webhook. Leave blank to skip.</div>` },
-]; }
-
-function openWizard(){ wizState.step=0; renderWiz(); $("wizOverlay").classList.add("show"); }
-function closeWizard(){ $("wizOverlay").classList.remove("show"); }
-
-function renderWiz(){
-  const steps=wizSteps(), s=steps[wizState.step];
-  $("wizStep").textContent=`Step ${wizState.step+1} of ${steps.length} · ${s.title}`;
-  $("wizBody").innerHTML=s.render();
-  $("wizDots").innerHTML=steps.map((_,i)=>`<i class="${i===wizState.step?'on':''}"></i>`).join("");
-  $("wizBack").style.visibility = wizState.step===0?"hidden":"visible";
-  $("wizNext").textContent = wizState.step===steps.length-1?"finish":"next";
-  wireWizStep();
-}
-
-function wireWizStep(){
-  if(wizState.step===0){
-    $("w_testIdx").addEventListener("click",async()=>{
-      wizState.data.jackett_url=$("w_jurl").value.trim();
-      wizState.data.jackett_api_key=$("w_jkey").value.trim();
-      const res=$("w_idxResult"); res.textContent="testing…"; res.className="test-result";
-      const r=await wizTest(); const i=r.indexer||{};
-      res.textContent=i.msg||"?"; res.className="test-result "+(i.ok?"ok":"bad"); wizState.tested.indexer=!!i.ok;
-    });
-  }
-  if(wizState.step===1){
-    $("w_ckind").addEventListener("change",e=>{ wizState.data.client_kind=e.target.value;
-      $("w_curl").value=CLIENT_DEFAULTS[e.target.value]||""; });
-    $("w_testCli").addEventListener("click",async()=>{
-      wizState.data.client_kind=$("w_ckind").value;
-      wizState.data.client_url=$("w_curl").value.trim();
-      wizState.data.client_user=$("w_cuser").value;
-      wizState.data.client_pass=$("w_cpass").value;
-      const res=$("w_cliResult"); res.textContent="testing…"; res.className="test-result";
-      const r=await wizTest(); const c=r.client||{};
-      res.textContent=c.msg||"?"; res.className="test-result "+(c.ok?"ok":"bad"); wizState.tested.client=!!c.ok;
-    });
-  }
-  if(wizState.step===2){
-    $("w_accents").querySelectorAll("button[data-a]").forEach(b=>b.addEventListener("click",()=>{
-      wizState.data.ui_accent=b.dataset.a;
-      $("w_accents").querySelectorAll("button").forEach(x=>x.classList.remove("sel"));
-      b.classList.add("sel"); document.body.dataset.accent=b.dataset.a;
-    }));
-  }
-}
-
-async function wizTest(){
-  try{ const r=await fetch("/api/setup/test",{method:"POST",headers:{"Content-Type":"application/json"},
-    body:JSON.stringify({jackett_url:wizState.data.jackett_url,jackett_api_key:wizState.data.jackett_api_key,
-      jackett_indexer:wizState.data.jackett_indexer,client_kind:wizState.data.client_kind,
-      client_url:wizState.data.client_url,client_user:wizState.data.client_user,client_pass:wizState.data.client_pass})});
-    return await r.json();
-  }catch(_){ return {}; }
-}
-
-function captureWizStep(){
-  if(wizState.step===0){ wizState.data.jackett_url=$("w_jurl").value.trim(); wizState.data.jackett_api_key=$("w_jkey").value.trim(); }
-  if(wizState.step===1){ wizState.data.client_kind=$("w_ckind").value; wizState.data.client_url=$("w_curl").value.trim();
-    wizState.data.client_user=$("w_cuser").value; wizState.data.client_pass=$("w_cpass").value; }
-  if(wizState.step===2){ wizState.data.library_root=$("w_lib").value.trim(); wizState.data.app_title=$("w_title").value.trim();
-    wizState.data.notify_urls=$("w_notify").value.trim(); }
-}
-
-$("wizBack").addEventListener("click",()=>{ captureWizStep(); if(wizState.step>0){ wizState.step--; renderWiz(); } });
-$("wizNext").addEventListener("click",async()=>{
-  captureWizStep();
-  const steps=wizSteps();
-  if(wizState.step<steps.length-1){ wizState.step++; renderWiz(); return; }
-  // finish: save
-  $("wizNext").disabled=true; $("wizNext").textContent="saving…";
-  try{
-    const r=await fetch("/api/setup/save",{method:"POST",headers:{"Content-Type":"application/json"},
-      body:JSON.stringify(wizState.data)});
-    if(!r.ok) throw new Error((await r.json()).detail||r.statusText);
-    closeWizard(); toast("Setup complete — Cascade is configured.");
-    await loadConfig(); pollAll();
-  }catch(err){ $("wizNext").disabled=false; $("wizNext").textContent="finish"; toast("Save failed: "+err.message,"err"); }
-});
-
-/* trigger wizard on first run (config not yet complete) */
-async function checkFirstRun(){
-  try{ const r=await fetch("/api/config"); const cfg=await r.json();
-    if(!cfg.configured) openWizard();
-  }catch(_){}
-}
-checkFirstRun();
-
-/* ---------------- search mode: title (TMDb) vs release ---------------- */
-let searchMode = "release";
-let metaEnabled = false;
-
-function setMode(m){
-  searchMode=m;
-  document.querySelectorAll("#modeToggle .mode").forEach(b=>b.classList.toggle("on",b.dataset.mode===m));
-  $("posterGrid").hidden=true; $("posterGrid").innerHTML="";
-  $("resultsTable").hidden=true; $("rows").innerHTML="";
-  $("filters").hidden=true; $("loadMore").hidden=true; $("empty").hidden=true;
-  $("q").placeholder = m==="title" ? "search by title… e.g. dune" : "search by release… e.g. dune 2024 1080p";
-}
-document.querySelectorAll("#modeToggle .mode").forEach(b=>b.addEventListener("click",()=>setMode(b.dataset.mode)));
-
-const doReleaseSearch = doSearch;
-doSearch = async function(){
-  if(searchMode==="title" && metaEnabled){ return doTitleSearch(); }
-  return doReleaseSearch();
-};
-
 async function doTitleSearch(){
-  const q=$("q").value.trim(); if(!q) return;
-  addHistory(q); hideHistory();
-  $("goBtn").disabled=true; $("status").textContent="searching titles…";
-  $("posterGrid").hidden=true; $("posterGrid").innerHTML=""; $("resultsTable").hidden=true; $("empty").hidden=true;
+  const q=$("q").value.trim();if(!q)return;
+  $("goBtn").disabled=true;$("status").textContent="searching titles…";$("resultsTable").hidden=true;$("searchEmpty").hidden=true;$("filters").hidden=true;
   try{
-    const r=await fetch(`/api/meta/search?q=${encodeURIComponent(q)}`);
-    const d=await r.json();
-    if(!d.results||!d.results.length){ $("status").textContent=""; $("empty").hidden=false; $("empty").textContent="No titles found."; return; }
-    renderPosters(d.results);
-    $("status").textContent=`${d.results.length} titles · pick one to find releases`;
-  }catch(err){ $("status").textContent=""; $("empty").hidden=false; $("empty").textContent="Title search failed: "+err.message; }
-  finally{ $("goBtn").disabled=false; }
+    const d=await jget(`/api/meta/search?q=${encodeURIComponent(q)}`);
+    if(!d.results||!d.results.length){$("status").textContent="";$("posterGrid").hidden=true;$("searchEmpty").hidden=false;$("searchEmpty").textContent="No titles found.";return;}
+    renderPosters(d.results);$("status").textContent=`${d.results.length} titles · pick one to find releases`;
+  }catch(err){$("status").textContent="";$("searchEmpty").hidden=false;$("searchEmpty").textContent="Title search failed.";}
+  finally{$("goBtn").disabled=false;}
 }
-
 function renderPosters(results){
-  const g=$("posterGrid"); g.hidden=false;
-  g.innerHTML=results.map(r=>`
-    <div class="poster" data-q="${esc(r.search_query)}">
+  const g=$("posterGrid");g.hidden=false;
+  g.innerHTML=results.map(r=>`<div class="poster" data-q="${esc(r.search_query)}">
+    <div class="img" style="${r.poster?`background-image:url('${esc(r.poster)}')`:''}">${r.poster?'':'no image'}</div>
+    <div class="meta"><div class="pt">${esc(r.title)}</div><div class="py">${esc(r.year||'')} · ${esc(r.media_type)}</div></div></div>`).join("");
+  g.querySelectorAll(".poster").forEach(p=>p.addEventListener("click",()=>{$("q").value=p.dataset.q;setMode("release");doSearch();}));
+}
+function applyFilters(){
+  const seed=+$("fSeed").value||0,res=$("fRes").value,src=$("fSrc").value;
+  const v=allResults.filter(r=>r.seeders>=seed&&(!res||(r.badges&&r.badges.res===res))&&(!src||(r.badges&&r.badges.source===src)));
+  renderRows(v);
+}
+["fSeed","fRes","fSrc"].forEach(id=>$(id).addEventListener("input",applyFilters));
+function typeBadge(r){if(!r||!r.ctype)return"";let h=`<span class="tag ctype ${esc(r.ctype)}">${esc(r.ctype)}</span>`;if(r.platform)h+=`<span class="tag platform">${esc(r.platform)}</span>`;return h;}
+function badgeHtml(b){if(!b)return"";let h="";if(b.res)h+=`<span class="tag res">${esc(b.res)}</span>`;if(b.source)h+=`<span class="tag src">${esc(b.source)}</span>`;if(b.ext)h+=`<span class="tag ext">${esc(b.ext)}</span>`;return h?`<div class="tags">${h}</div>`:"";}
+function healthHtml(r){const t=r.seeders+(r.peers||0),p=t?Math.round(r.seeders/t*100):0;return `<span class="health" title="${r.seeders} seed / ${r.peers||0} peers"><i style="width:${p}%"></i></span> ${r.seeders}`;}
+function renderRows(list){
+  $("resultsTable").hidden=false;$("posterGrid").hidden=true;
+  $("rows").innerHTML=list.map((r,i)=>`<tr>
+    <td class="title">${esc(r.title)}${typeBadge(r)}${badgeHtml(r.badges)}</td>
+    <td>${esc(r.size_h||human(r.size))}</td><td>${healthHtml(r)}</td>
+    <td class="trk">${esc(r.tracker||'')}</td>
+    <td><button class="addbtn" data-add="${i}">add</button></td></tr>`).join("");
+  $("rows").querySelectorAll("[data-add]").forEach(b=>b.addEventListener("click",()=>addTorrent(list[+b.dataset.add],b)));
+}
+async function addTorrent(r,btn){
+  btn.disabled=true;btn.textContent="adding…";
+  try{await jsend("/api/add","POST",{magnet:r.href,title:r.title});toast("Added: "+r.title.slice(0,40));btn.textContent="added";refreshDock();}
+  catch(err){btn.disabled=false;btn.textContent="add";toast("Add failed: "+err.message,"err");}
+}
+async function refreshMeta(){
+  try{const d=await jget("/api/meta/search?q=test");metaEnabled=!!d.enabled;}catch(_){metaEnabled=false;}
+  $("modeToggle").hidden=!metaEnabled;if(metaEnabled&&searchMode==="release")setMode("title");
+}
+
+// ============ stats bar ============
+async function loadStatsbar(){
+  try{const s=await jget("/api/stats");
+    const disk=s.disk||{};const dpct=disk.total?Math.round((disk.total-disk.free)/disk.total*100):0;
+    const dc=dpct>90?"bad":dpct>75?"warn":"";
+    $("statsbar").innerHTML=`
+      <div class="stat"><span class="k">disk free</span><span class="v">${esc(human(disk.free))} / ${esc(human(disk.total))}</span><div class="diskbar"><i class="${dc}" style="width:${dpct}%"></i></div></div>
+      <div class="stat"><span class="k">↓ total</span><span class="v">${esc(s.down_total_h||'0 B/s')}</span></div>
+      <div class="stat"><span class="k">↑ total</span><span class="v">${esc(s.up_total_h||'0 B/s')}</span></div>
+      <div class="stat"><span class="k">downloading</span><span class="v ${s.downloading?'warn':''}">${s.downloading||0}</span></div>
+      <div class="stat"><span class="k">seeding</span><span class="v good">${s.seeding||0}</span></div>`;
+    $("activeCount").textContent=s.downloading||0;$("activeCount").className="badge"+(s.downloading?"":" zero");
+  }catch(_){}
+}
+
+// ============ shows ============
+let showsData=[],profilesCache=[];
+async function loadShows(){
+  $("showsGrid").innerHTML="<div class='muted'>loading…</div>";
+  try{[showsData,profilesCache]=await Promise.all([jget("/api/series").then(d=>d.series||[]),jget("/api/profiles").then(d=>d.profiles||[])]);
+    renderShows();}catch(_){$("showsGrid").innerHTML="<div class='empty'>Couldn't load shows.</div>";}
+}
+function renderShows(){
+  $("showsCount").textContent=showsData.length?`${showsData.length} monitored`:"";
+  $("showsEmpty").hidden=showsData.length>0;
+  $("showsGrid").innerHTML=showsData.map(s=>{
+    const pct=s.total?Math.round(s.have/s.total*100):0;
+    const prof=profilesCache.find(p=>p.id===s.profile_id);
+    return `<div class="lcard">
+      <div class="pimg" style="${s.poster?`background-image:url('${esc(s.poster)}')`:''}">${s.poster?'':'no art'}</div>
+      <div class="body"><div class="lt">${esc(s.title)}</div><div class="ly">${s.year||''}</div>
+        <div class="lmeta"><span>${s.have}/${s.total} eps</span>
+          ${s.wanted?`<span class="pill want">${s.wanted} wanted</span>`:'<span class="pill have">complete</span>'}
+          ${prof?`<span class="muted">${esc(prof.name)}</span>`:''}</div>
+        <div class="lbar"><i class="${pct<100?'partial':''}" style="width:${pct}%"></i></div>
+        <div class="lact"><button class="link-btn danger" data-del="${s.id}">remove</button></div>
+      </div></div>`;}).join("");
+  $("showsGrid").querySelectorAll("[data-del]").forEach(b=>b.addEventListener("click",async()=>{await jsend(`/api/series/${b.dataset.del}`,"DELETE");toast("Removed.");loadShows();}));
+}
+$("showsAdd").addEventListener("click",()=>addMediaForm("show"));
+$("showsScan").addEventListener("click",()=>scanHunt("show"));
+
+// ============ movies ============
+let moviesData=[];
+async function loadMovies(){
+  $("moviesGrid").innerHTML="<div class='muted'>loading…</div>";
+  try{[moviesData,profilesCache]=await Promise.all([jget("/api/movies").then(d=>d.movies||[]),jget("/api/profiles").then(d=>d.profiles||[])]);
+    renderMovies();}catch(_){$("moviesGrid").innerHTML="<div class='empty'>Couldn't load movies.</div>";}
+}
+function renderMovies(){
+  $("moviesCount").textContent=moviesData.length?`${moviesData.length} monitored`:"";
+  $("moviesEmpty").hidden=moviesData.length>0;
+  $("moviesGrid").innerHTML=moviesData.map(m=>{
+    const prof=profilesCache.find(p=>p.id===m.profile_id);
+    return `<div class="lcard">
+      <div class="pimg" style="${m.poster?`background-image:url('${esc(m.poster)}')`:''}">${m.poster?'':'no art'}</div>
+      <div class="body"><div class="lt">${esc(m.title)}</div><div class="ly">${m.year||''}</div>
+        <div class="lmeta"><span class="pill ${m.status==='have'?'have':'want'}">${m.status==='have'?'in library':'wanted'}</span>
+          ${prof?`<span class="muted">${esc(prof.name)}</span>`:''}</div>
+        <div class="lact"><button class="link-btn danger" data-del="${m.id}">remove</button></div>
+      </div></div>`;}).join("");
+  $("moviesGrid").querySelectorAll("[data-del]").forEach(b=>b.addEventListener("click",async()=>{await jsend(`/api/movies/${b.dataset.del}`,"DELETE");toast("Removed.");loadMovies();}));
+}
+$("moviesAdd").addEventListener("click",()=>addMediaForm("movie"));
+$("moviesScan").addEventListener("click",()=>scanHunt("movie"));
+
+async function scanHunt(kind){
+  const btn=kind==="show"?$("showsScan"):$("moviesScan");btn.disabled=true;btn.textContent="scanning…";
+  try{await jsend("/api/library/scan","POST");const rec=await jsend("/api/library/reconcile","POST");const chk=await jsend("/api/subscriptions/check","POST");
+    toast(`Reconciled · grabbed ${chk.grabbed||0}.`);kind==="show"?loadShows():loadMovies();}
+  catch(_){toast("Scan failed","err");}
+  finally{btn.disabled=false;btn.textContent="scan + hunt";}
+}
+
+// add show/movie via TMDb poster search (shared modal)
+function addMediaForm(kind){
+  const opts=`<option value="">no profile (best-seeded)</option>`+profilesCache.map(p=>`<option value="${p.id}">${esc(p.name)}</option>`).join("");
+  openModal(kind==="show"?"Add show":"Add movie",`
+    <label class="fld">Search ${kind==="show"?"a show":"a movie"} (TMDb)</label>
+    <input type="text" id="am_q" placeholder="${kind==="show"?'e.g. the office':'e.g. dune'}" autocomplete="off" style="width:100%">
+    <label class="fld">Quality profile</label><select id="am_prof" style="width:100%">${opts}</select>
+    <div id="am_results" class="poster-grid" style="margin-top:10px"></div>`);
+  let t=null;
+  $("am_q").addEventListener("input",()=>{clearTimeout(t);t=setTimeout(()=>amSearch(kind),400);});
+  $("am_q").focus();
+}
+async function amSearch(kind){
+  const q=$("am_q").value.trim();if(!q){$("am_results").innerHTML="";return;}
+  try{const d=await jget(`/api/meta/search?q=${encodeURIComponent(q)}&kind=${kind==="show"?"tv":"movie"}`);
+    const want=kind==="show"?"tv":"movie";
+    const items=(d.results||[]).filter(r=>r.media_type===want);
+    if(!items.length){$("am_results").innerHTML="<div class='muted'>No results (need a TMDb key in Settings).</div>";return;}
+    $("am_results").innerHTML=items.map(r=>`<div class="poster" data-tmdb="${r.tmdb_id}" data-title="${esc(r.title)}" data-year="${esc(r.year||'')}" data-poster="${esc(r.poster||'')}">
       <div class="img" style="${r.poster?`background-image:url('${esc(r.poster)}')`:''}">${r.poster?'':'no image'}</div>
-      <div class="meta">
-        <div class="pt" title="${esc(r.title)}">${esc(r.title)}</div>
-        <div class="py"><span>${esc(r.year||'')}</span><span class="badge-type ${r.media_type}">${r.media_type}</span></div>
-      </div>
-    </div>`).join("");
-  g.querySelectorAll(".poster").forEach(p=>p.addEventListener("click",()=>{
-    $("q").value=p.dataset.q; setMode("release"); doReleaseSearch();
-  }));
+      <div class="meta"><div class="pt">${esc(r.title)}</div><div class="py">${esc(r.year||'')}</div></div></div>`).join("");
+    $("am_results").querySelectorAll(".poster").forEach(p=>p.addEventListener("click",()=>amAdd(kind,p.dataset)));
+  }catch(_){$("am_results").innerHTML="<div class='muted'>Search failed.</div>";}
+}
+async function amAdd(kind,d){
+  const body={tmdb_id:+d.tmdb,title:d.title,year:d.year?+d.year:null,poster:d.poster||null,profile_id:$("am_prof").value?+$("am_prof").value:null};
+  try{await jsend(kind==="show"?"/api/series":"/api/movies","POST",body);toast(`Now monitoring ${d.title}.`);closeModal();kind==="show"?loadShows():loadMovies();}
+  catch(_){toast("Couldn't add","err");}
 }
 
-/* ---------------- settings editor ---------------- */
-async function openSettings(){
-  const r=await fetch("/api/settings"); const s=await r.json();
-  const env=s.env||{};
-  $("setBody").innerHTML=`
-    <div class="set-group"><h3>Metadata</h3>
-      <div class="set-row"><label>TMDb API key ${s.tmdb_enabled?'<span style="color:var(--good)">● enabled</span>':'<span style="color:var(--muted)">○ disabled</span>'}</label>
-        <input id="set_tmdb" placeholder="paste TMDb key to enable title search" value="${esc(s.db&&s.db.tmdb_key||'')}"></div>
-    </div>
-    <div class="set-group"><h3>Indexer</h3>
-      <div class="set-row"><label>Jackett URL</label><input id="set_jurl" value="${esc(env.JACKETT_URL||'')}"></div>
-      <div class="set-row"><label>Indexer</label>
-        <select id="set_jidx"><option value="all" ${(env.JACKETT_INDEXER||'all')==='all'?'selected':''}>all (every configured indexer)</option></select>
-        <div class="hint" id="set_jidx_hint" style="margin-top:4px"></div></div>
-    </div>
-    <div class="set-group"><h3>Behavior</h3>
-      <div class="set-row"><label>Auto-remove finished torrents</label>
-        <select id="set_remove"><option value="0" ${env.REMOVE_ON_COMPLETE!=='1'?'selected':''}>off</option><option value="1" ${env.REMOVE_ON_COMPLETE==='1'?'selected':''}>on</option></select></div>
-      <div class="set-row"><label>Notifications (comma-separated URLs)</label><input id="set_notify" value="${esc(env.NOTIFY_URLS||'')}"></div>
-    </div>
-    <div class="set-group"><h3>Appearance</h3>
-      <div class="set-row"><label>App name</label><input id="set_title" value="${esc(env.APP_TITLE||'Cascade')}"></div>
-      <div class="set-row"><label>Theme</label><select id="set_theme">
-        ${['dark','light','auto'].map(t=>`<option ${env.UI_THEME===t?'selected':''}>${t}</option>`).join('')}</select></div>
-      <div class="set-row"><label>Accent</label><select id="set_accent">
-        ${['blue','green','purple','amber','rose'].map(a=>`<option ${env.UI_ACCENT===a?'selected':''}>${a}</option>`).join('')}</select></div>
-    </div>`;
-  $("setOverlay").classList.add("show");
-  // populate the indexer dropdown from Jackett's configured list
-  populateIndexers(env.JACKETT_INDEXER || "all");
-}
-
-async function populateIndexers(current){
-  const sel=$("set_jidx"); const hint=$("set_jidx_hint");
-  hint.textContent="loading indexers…";
-  try{
-    const r=await fetch("/api/indexers"); const d=await r.json();
-    const list=d.indexers||[];
-    // keep the "all" option, append each configured indexer
-    sel.innerHTML=`<option value="all" ${current==='all'?'selected':''}>all (every configured indexer)</option>`
-      + list.map(ix=>`<option value="${esc(ix.id)}" ${current===ix.id?'selected':''}>${esc(ix.name)}</option>`).join("");
-    hint.textContent = list.length ? `${list.length} indexer${list.length>1?'s':''} configured in Jackett`
-      : "No indexers found — add some in Jackett, or check the connection.";
-  }catch(_){
-    // fall back to a free-text option so the field is never unusable
-    sel.innerHTML=`<option value="${esc(current)}" selected>${esc(current)}</option><option value="all">all</option>`;
-    hint.textContent="Couldn't reach Jackett to list indexers; showing current value.";
-  }
-}
-$("settingsBtn").addEventListener("click",openSettings);
-$("setClose").addEventListener("click",()=>$("setOverlay").classList.remove("show"));
-$("setOverlay").addEventListener("click",e=>{ if(e.target.id==="setOverlay") $("setOverlay").classList.remove("show"); });
-$("setSave").addEventListener("click",async()=>{
-  const v={ tmdb_key:$("set_tmdb").value.trim(),
-    JACKETT_URL:$("set_jurl").value.trim(), JACKETT_INDEXER:$("set_jidx").value.trim(),
-    REMOVE_ON_COMPLETE:$("set_remove").value, NOTIFY_URLS:$("set_notify").value.trim(),
-    APP_TITLE:$("set_title").value.trim(), UI_THEME:$("set_theme").value, UI_ACCENT:$("set_accent").value };
-  $("setSave").disabled=true; $("setSave").textContent="saving…";
-  try{
-    const r=await fetch("/api/settings",{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify({values:v})});
-    if(!r.ok) throw new Error((await r.json()).detail||r.statusText);
-    $("setOverlay").classList.remove("show"); toast("Settings saved.");
-    await loadConfig(); await refreshMeta();
-  }catch(err){ toast("Save failed: "+err.message,"err"); }
-  finally{ $("setSave").disabled=false; $("setSave").textContent="save changes"; }
-});
-
-/* ---------------- stats / history ---------------- */
-async function openStats(){
-  $("statsOverlay").classList.add("show");
-  $("statsBody").innerHTML="<div style='color:var(--muted)'>loading…</div>";
-  try{
-    const [st,hi]=await Promise.all([fetch("/api/history/stats").then(r=>r.json()),fetch("/api/history?limit=80").then(r=>r.json())]);
-    const cards=`<div class="stat-cards">
-      <div class="stat-card"><div class="num">${st.completed_count||0}</div><div class="lbl">downloads completed</div></div>
-      <div class="stat-card"><div class="num">${st.completed_bytes_h||'0 B'}</div><div class="lbl">total downloaded</div></div>
-      <div class="stat-card"><div class="num">${(st.by_event&&st.by_event.sorted)||0}</div><div class="lbl">sorted to library</div></div>
-      <div class="stat-card"><div class="num">${(st.by_event&&st.by_event.removed)||0}</div><div class="lbl">auto-removed</div></div></div>`;
-    const rows=(hi.history||[]).map(h=>`<div class="hist-row"><span class="ht">${esc((h.ts||'').replace('T',' ').slice(5,16))}</span><span class="he">${esc(h.event)}</span><span class="hn">${esc(h.title||h.detail||'')}</span></div>`).join("")
-      || "<div style='color:var(--muted);padding:20px 0'>No history yet.</div>";
-    $("statsBody").innerHTML=cards+rows;
-  }catch(_){ $("statsBody").innerHTML="<div style='color:var(--bad)'>Couldn't load stats.</div>"; }
-}
-$("statsBtn").addEventListener("click",openStats);
-$("statsClose").addEventListener("click",()=>$("statsOverlay").classList.remove("show"));
-$("statsOverlay").addEventListener("click",e=>{ if(e.target.id==="statsOverlay") $("statsOverlay").classList.remove("show"); });
-
-/* ---------------- quality profiles ---------------- */
-const ALL_RES=["2160p","1080p","720p","480p"];
-const ALL_SRC=["REMUX","BluRay","WEB-DL","WEBRip","HDTV","DVDRip"];
-let profiles=[];
-
-async function openProfiles(){
-  $("profOverlay").classList.add("show");
-  $("profBody").innerHTML="<div style='color:var(--muted)'>loading…</div>";
-  try{
-    profiles=(await (await fetch("/api/profiles")).json()).profiles||[];
-    renderProfiles();
-  }catch(_){ $("profBody").innerHTML="<div style='color:var(--bad)'>Couldn't load profiles.</div>"; }
-}
-function renderProfiles(){
-  if(!profiles.length){ $("profBody").innerHTML="<div style='color:var(--muted);padding:10px 0'>No profiles yet. Create one to enable auto-pick.</div>"; return; }
-  $("profBody").innerHTML=profiles.map(p=>`
-    <div class="prof-card" data-id="${p.id}">
-      <div class="prof-head"><b>${esc(p.name)}</b>
-        <span class="prof-actions"><button class="link-btn" data-edit="${p.id}">edit</button>
-        <button class="link-btn danger" data-del="${p.id}">delete</button></span></div>
-      <div class="prof-meta">
-        ${(p.resolutions||[]).map(r=>`<span class="tag res">${esc(r)}</span>`).join("")||'<span class="muted">any res</span>'}
-        ${(p.sources||[]).map(s=>`<span class="tag src">${esc(s)}</span>`).join("")}
-        <span class="muted">· ${p.min_seeders}+ seeders${p.max_size_gb?` · ≤${p.max_size_gb}GB`:''}${p.min_size_gb?` · ≥${p.min_size_gb}GB`:''}</span>
-      </div>
-    </div>`).join("");
-  $("profBody").querySelectorAll("[data-edit]").forEach(b=>b.addEventListener("click",()=>editProfile(+b.dataset.edit)));
-  $("profBody").querySelectorAll("[data-del]").forEach(b=>b.addEventListener("click",()=>delProfile(+b.dataset.del)));
-}
-function profileForm(p){
-  p=p||{name:"",min_seeders:1,resolutions:[],sources:[],max_size_gb:0,min_size_gb:0};
-  $("profBody").innerHTML=`
-    <div class="set-row"><label>Profile name</label><input id="pf_name" value="${esc(p.name)}" placeholder="e.g. 1080p WEB"></div>
-    <div class="set-row"><label>Resolutions (preference order — click to toggle)</label>
-      <div class="chips" id="pf_res">${ALL_RES.map(r=>`<span class="chip ${p.resolutions.includes(r)?'on':''}" data-v="${r}">${r}</span>`).join("")}</div></div>
-    <div class="set-row"><label>Sources (preference order)</label>
-      <div class="chips" id="pf_src">${ALL_SRC.map(s=>`<span class="chip ${p.sources.includes(s)?'on':''}" data-v="${s}">${s}</span>`).join("")}</div></div>
-    <div class="wiz-grid2">
-      <div class="set-row"><label>Min seeders</label><input id="pf_seed" type="number" min="0" value="${p.min_seeders}"></div>
-      <div class="set-row"><label>Max size GB (0=none)</label><input id="pf_max" type="number" min="0" step="0.5" value="${p.max_size_gb}"></div>
-    </div>
-    <div style="display:flex;gap:8px;margin-top:8px">
-      <button class="wiz-btn" id="pf_save">${p.id?'save':'create'}</button>
-      <button class="wiz-btn ghost" id="pf_cancel">cancel</button>
-    </div>`;
-  // chips toggle + track order
-  $("profBody").querySelectorAll(".chip").forEach(ch=>ch.addEventListener("click",()=>ch.classList.toggle("on")));
-  $("pf_cancel").addEventListener("click",renderProfiles);
-  $("pf_save").addEventListener("click",async()=>{
-    const body={ name:$("pf_name").value.trim(),
-      resolutions:[...$("pf_res").querySelectorAll(".chip.on")].map(c=>c.dataset.v),
-      sources:[...$("pf_src").querySelectorAll(".chip.on")].map(c=>c.dataset.v),
-      min_seeders:+$("pf_seed").value||0, max_size_gb:+$("pf_max").value||0, min_size_gb:0 };
-    if(!body.name){ toast("Name required","err"); return; }
-    const url=p.id?`/api/profiles/${p.id}`:"/api/profiles";
-    const method=p.id?"PUT":"POST";
-    try{ await fetch(url,{method,headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
-      toast("Profile saved."); await openProfiles();
-    }catch(_){ toast("Save failed","err"); }
-  });
-}
-function editProfile(id){ profileForm(profiles.find(p=>p.id===id)); }
-async function delProfile(id){
-  try{ await fetch(`/api/profiles/${id}`,{method:"DELETE"}); toast("Deleted."); await openProfiles(); }
-  catch(_){ toast("Delete failed","err"); }
-}
-$("profilesBtn").addEventListener("click",openProfiles);
-$("profClose").addEventListener("click",()=>$("profOverlay").classList.remove("show"));
-$("profOverlay").addEventListener("click",e=>{ if(e.target.id==="profOverlay") $("profOverlay").classList.remove("show"); });
-$("profNew").addEventListener("click",()=>profileForm(null));
-
-/* ---------------- subscriptions (auto-grab) ---------------- */
-let subs=[], subsProfiles=[];
-async function openSubs(){
-  $("subsOverlay").classList.add("show");
-  $("subsBody").innerHTML="<div style='color:var(--muted)'>loading…</div>";
-  try{
-    [subs,subsProfiles]=await Promise.all([
-      fetch("/api/subscriptions").then(r=>r.json()).then(d=>d.subscriptions||[]),
-      fetch("/api/profiles").then(r=>r.json()).then(d=>d.profiles||[]),
-    ]);
-    renderSubs();
-    const st=await (await fetch("/api/subscriptions/status")).json();
-    const mins=Math.round((st.interval_seconds||0)/60);
+// ============ subscriptions ============
+let subsData=[];
+async function loadSubs(){
+  $("subsList").innerHTML="<div class='muted'>loading…</div>";
+  try{[subsData,profilesCache]=await Promise.all([jget("/api/subscriptions").then(d=>d.subscriptions||[]),jget("/api/profiles").then(d=>d.profiles||[])]);
+    renderSubs();const st=await jget("/api/subscriptions/status");const mins=Math.round((st.interval_seconds||0)/60);
     const last=st.last_run&&st.last_run.ts?`last check ${st.last_run.ts.replace('T',' ').slice(5,16)} (${st.last_run.grabbed} grabbed)`:"no checks yet";
     $("subsStatus").textContent=`auto-checks every ${mins} min · ${last}`;
-  }catch(_){ $("subsBody").innerHTML="<div style='color:var(--bad)'>Couldn't load subscriptions.</div>"; }
+  }catch(_){$("subsList").innerHTML="<div class='empty'>Couldn't load.</div>";}
 }
 function renderSubs(){
-  if(!subs.length){ $("subsBody").innerHTML="<div style='color:var(--muted);padding:10px 0'>No subscriptions. Follow a show or search to auto-grab new releases.</div>"; return; }
-  $("subsBody").innerHTML=subs.map(s=>{
-    const prof=subsProfiles.find(p=>p.id===s.profile_id);
-    return `<div class="prof-card">
-      <div class="prof-head"><b>${esc(s.title)}</b>
-        <span class="prof-actions">
-          <label class="switch" title="enabled"><input type="checkbox" data-toggle="${s.id}" ${s.enabled?'checked':''}><span></span></label>
-          <button class="link-btn" data-sedit="${s.id}">edit</button>
-          <button class="link-btn danger" data-sdel="${s.id}">delete</button></span></div>
-      <div class="prof-meta">
-        <span class="muted">query:</span> <code>${esc(s.query)}</code>
-        <span class="muted">· ${prof?esc(prof.name):'best-seeded'}</span>
-        ${s.last_grab?`<span class="muted">· last grab ${esc((s.last_grab||'').replace('T',' ').slice(5,16))}</span>`:''}
-      </div></div>`;
-  }).join("");
-  $("subsBody").querySelectorAll("[data-sedit]").forEach(b=>b.addEventListener("click",()=>subForm(subs.find(s=>s.id===+b.dataset.sedit))));
-  $("subsBody").querySelectorAll("[data-sdel]").forEach(b=>b.addEventListener("click",()=>delSub(+b.dataset.sdel)));
-  $("subsBody").querySelectorAll("[data-toggle]").forEach(b=>b.addEventListener("change",()=>toggleSub(+b.dataset.toggle,b.checked)));
+  $("subsCount").textContent=subsData.length?`${subsData.length} active`:"";
+  $("subsEmpty").hidden=subsData.length>0;
+  $("subsList").innerHTML=subsData.map(s=>{const prof=profilesCache.find(p=>p.id===s.profile_id);
+    return `<div class="prof-card"><div class="prof-head"><b>${esc(s.title)}</b>
+      <span><label class="switch"><input type="checkbox" data-tog="${s.id}" ${s.enabled?'checked':''}><span></span></label>
+      <button class="link-btn danger" data-sdel="${s.id}" style="margin-left:10px">delete</button></span></div>
+      <div class="prof-meta"><span class="muted">query:</span> <code>${esc(s.query)}</code> <span class="muted">· ${prof?esc(prof.name):'best-seeded'}</span></div></div>`;}).join("");
+  $("subsList").querySelectorAll("[data-sdel]").forEach(b=>b.addEventListener("click",async()=>{await jsend(`/api/subscriptions/${b.dataset.sdel}`,"DELETE");toast("Deleted.");loadSubs();}));
+  $("subsList").querySelectorAll("[data-tog]").forEach(b=>b.addEventListener("change",async()=>{const s=subsData.find(x=>x.id==b.dataset.tog);await jsend(`/api/subscriptions/${b.dataset.tog}`,"PUT",{title:s.title,query:s.query,media_type:s.media_type,profile_id:s.profile_id,enabled:b.checked});}));
 }
-function subForm(s){
-  s=s||{title:"",query:"",media_type:"tv",profile_id:null,enabled:true};
-  const opts=`<option value="">best-seeded (no profile)</option>`+subsProfiles.map(p=>`<option value="${p.id}" ${s.profile_id===p.id?'selected':''}>${esc(p.name)}</option>`).join("");
-  $("subsBody").innerHTML=`
-    <div class="set-row"><label>Name</label><input id="sf_title" value="${esc(s.title)}" placeholder="e.g. The Office"></div>
-    <div class="set-row"><label>Search query (what to look for each check)</label><input id="sf_query" value="${esc(s.query)}" placeholder="e.g. the office s03"></div>
-    <div class="set-row"><label>Quality profile</label><select id="sf_profile">${opts}</select></div>
-    <div style="display:flex;gap:8px;margin-top:8px">
-      <button class="wiz-btn" id="sf_save">${s.id?'save':'create'}</button>
-      <button class="wiz-btn ghost" id="sf_cancel">cancel</button></div>
-    <div class="hint" style="margin-top:10px">Cascade searches this query on a timer and grabs the best new release matching your profile. Already-grabbed releases are skipped automatically.</div>`;
-  $("sf_cancel").addEventListener("click",renderSubs);
-  $("sf_save").addEventListener("click",async()=>{
-    const body={title:$("sf_title").value.trim(),query:$("sf_query").value.trim(),
-      media_type:"tv",profile_id:$("sf_profile").value?+$("sf_profile").value:null,enabled:true};
-    if(!body.title){ toast("Name required","err"); return; }
-    if(!body.query) body.query=body.title;
-    const url=s.id?`/api/subscriptions/${s.id}`:"/api/subscriptions";
-    try{ await fetch(url,{method:s.id?"PUT":"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
-      toast("Subscription saved."); await openSubs();
-    }catch(_){ toast("Save failed","err"); }
-  });
+$("subsNew").addEventListener("click",()=>{
+  const opts=`<option value="">best-seeded</option>`+profilesCache.map(p=>`<option value="${p.id}">${esc(p.name)}</option>`).join("");
+  openModal("Follow a search",`<label class="fld">Name</label><input type="text" id="sf_t" placeholder="e.g. The Office" style="width:100%">
+    <label class="fld">Search query</label><input type="text" id="sf_q" placeholder="e.g. the office s03" style="width:100%">
+    <label class="fld">Quality profile</label><select id="sf_p" style="width:100%">${opts}</select>
+    <div style="margin-top:14px"><button class="btn" id="sf_save">create</button></div>
+    <div class="hint" style="margin-top:8px">Cascade searches this on a timer and grabs the best new release matching your profile.</div>`);
+  $("sf_save").addEventListener("click",async()=>{const t=$("sf_t").value.trim();if(!t){toast("Name required","err");return;}
+    await jsend("/api/subscriptions","POST",{title:t,query:$("sf_q").value.trim()||t,media_type:"tv",profile_id:$("sf_p").value?+$("sf_p").value:null,enabled:true});
+    toast("Subscription saved.");closeModal();loadSubs();});
+});
+$("subsCheck").addEventListener("click",async()=>{$("subsCheck").disabled=true;$("subsCheck").textContent="checking…";
+  try{const r=await jsend("/api/subscriptions/check","POST");toast(`Checked ${r.checked} · grabbed ${r.grabbed}.`);loadSubs();}
+  catch(_){toast("Check failed","err");}finally{$("subsCheck").disabled=false;$("subsCheck").textContent="check now";}});
+
+// ============ profiles ============
+const ALL_RES=["2160p","1080p","720p","480p"],ALL_SRC=["REMUX","BluRay","WEB-DL","WEBRip","HDTV","DVDRip"];
+let profData=[];
+async function loadProfiles(){
+  $("profList").innerHTML="<div class='muted'>loading…</div>";
+  try{profData=await jget("/api/profiles").then(d=>d.profiles||[]);renderProfiles();}
+  catch(_){$("profList").innerHTML="<div class='empty'>Couldn't load.</div>";}
 }
-async function delSub(id){ try{ await fetch(`/api/subscriptions/${id}`,{method:"DELETE"}); toast("Deleted."); await openSubs(); }catch(_){ toast("Delete failed","err"); } }
-async function toggleSub(id,on){
-  const s=subs.find(x=>x.id===id); if(!s) return;
-  try{ await fetch(`/api/subscriptions/${id}`,{method:"PUT",headers:{"Content-Type":"application/json"},
-    body:JSON.stringify({title:s.title,query:s.query,media_type:s.media_type,profile_id:s.profile_id,enabled:on})}); }
-  catch(_){ toast("Toggle failed","err"); }
+function renderProfiles(){
+  $("profCount").textContent=profData.length?`${profData.length}`:"";
+  $("profList").innerHTML=profData.map(p=>`<div class="prof-card"><div class="prof-head"><b>${esc(p.name)}</b>
+    <span><button class="link-btn" data-pe="${p.id}">edit</button> <button class="link-btn danger" data-pd="${p.id}" style="margin-left:8px">delete</button></span></div>
+    <div class="prof-meta">${(p.resolutions||[]).map(r=>`<span class="tag res">${esc(r)}</span>`).join("")||'<span class="muted">any res</span>'}
+      ${(p.sources||[]).map(s=>`<span class="tag src">${esc(s)}</span>`).join("")}
+      <span class="muted">· ${p.min_seeders}+ seeders${p.max_size_gb?` · ≤${p.max_size_gb}GB`:''}</span></div></div>`).join("");
+  $("profList").querySelectorAll("[data-pe]").forEach(b=>b.addEventListener("click",()=>profForm(profData.find(p=>p.id==b.dataset.pe))));
+  $("profList").querySelectorAll("[data-pd]").forEach(b=>b.addEventListener("click",async()=>{await jsend(`/api/profiles/${b.dataset.pd}`,"DELETE");toast("Deleted.");loadProfiles();}));
 }
-$("subsBtn").addEventListener("click",openSubs);
-$("subsClose").addEventListener("click",()=>$("subsOverlay").classList.remove("show"));
-$("subsOverlay").addEventListener("click",e=>{ if(e.target.id==="subsOverlay") $("subsOverlay").classList.remove("show"); });
-$("subsNew").addEventListener("click",()=>subForm(null));
-$("subsCheck").addEventListener("click",async()=>{
-  $("subsCheck").disabled=true; $("subsCheck").textContent="checking…";
-  try{ const r=await (await fetch("/api/subscriptions/check",{method:"POST"})).json();
-    toast(`Checked ${r.checked} · grabbed ${r.grabbed}.`); await openSubs();
-  }catch(_){ toast("Check failed","err"); }
-  finally{ $("subsCheck").disabled=false; $("subsCheck").textContent="check now"; }
+$("profNew").addEventListener("click",()=>profForm(null));
+function profForm(p){
+  p=p||{name:"",min_seeders:1,resolutions:[],sources:[],max_size_gb:0};
+  openModal(p.id?"Edit profile":"New profile",`
+    <label class="fld">Name</label><input type="text" id="pf_name" value="${esc(p.name)}" placeholder="e.g. 1080p WEB" style="width:100%">
+    <label class="fld">Resolutions (preference order)</label><div class="chips" id="pf_res">${ALL_RES.map(r=>`<span class="chip ${p.resolutions.includes(r)?'on':''}" data-v="${r}">${r}</span>`).join("")}</div>
+    <label class="fld">Sources (preference order)</label><div class="chips" id="pf_src">${ALL_SRC.map(s=>`<span class="chip ${p.sources.includes(s)?'on':''}" data-v="${s}">${s}</span>`).join("")}</div>
+    <div class="row2"><div><label class="fld">Min seeders</label><input type="number" id="pf_seed" min="0" value="${p.min_seeders}" style="width:100%"></div>
+    <div><label class="fld">Max size GB (0=none)</label><input type="number" id="pf_max" min="0" step="0.5" value="${p.max_size_gb}" style="width:100%"></div></div>
+    <div style="margin-top:14px"><button class="btn" id="pf_save">${p.id?'save':'create'}</button></div>`);
+  document.querySelectorAll("#modalBody .chip").forEach(c=>c.addEventListener("click",()=>c.classList.toggle("on")));
+  $("pf_save").addEventListener("click",async()=>{const body={name:$("pf_name").value.trim(),
+    resolutions:[...$("pf_res").querySelectorAll(".chip.on")].map(c=>c.dataset.v),
+    sources:[...$("pf_src").querySelectorAll(".chip.on")].map(c=>c.dataset.v),
+    min_seeders:+$("pf_seed").value||0,max_size_gb:+$("pf_max").value||0,min_size_gb:0};
+    if(!body.name){toast("Name required","err");return;}
+    await jsend(p.id?`/api/profiles/${p.id}`:"/api/profiles",p.id?"PUT":"POST",body);toast("Saved.");closeModal();loadProfiles();});
+}
+
+// ============ activity drawer ============
+let drawerTab="transfers",dockTimer=null;
+function openDrawer(){$("drawer").classList.add("show");refreshDock();dockTimer=setInterval(refreshDock,4000);}
+function closeDrawer(){$("drawer").classList.remove("show");if(dockTimer){clearInterval(dockTimer);dockTimer=null;}}
+$("activityBtn").addEventListener("click",openDrawer);
+$("drawerClose").addEventListener("click",closeDrawer);
+document.querySelectorAll(".drawer-tabs button").forEach(b=>b.addEventListener("click",()=>{drawerTab=b.dataset.tab;
+  document.querySelectorAll(".drawer-tabs button").forEach(x=>x.classList.toggle("on",x===b));refreshDock();}));
+async function refreshDock(){
+  if(!$("drawer").classList.contains("show"))return;
+  if(drawerTab==="transfers"){
+    try{const d=await jget("/api/transfers");const xs=d.transfers||[];
+      $("drawerBody").innerHTML=xs.length?xs.map(x=>{const pct=Math.round(x.percent||0);
+        return `<div class="xfer"><div class="xt">${esc(x.name)}</div><div class="xbar"><i style="width:${pct}%"></i></div>
+          <div class="xmeta"><span>${pct}%</span><span>${esc(x.status||'')}</span><span>↓${esc(x.down_h||'0/s')}</span></div>
+          <div class="xact"><button class="link-btn" data-pause="${x.id}">${x.status==='downloading'?'pause':'resume'}</button>
+          <button class="link-btn danger" data-rm="${x.id}">remove</button></div></div>`;}).join(""):"<div class='empty'>No active transfers.</div>";
+      $("drawerBody").querySelectorAll("[data-rm]").forEach(b=>b.addEventListener("click",async()=>{await jsend(`/api/torrent/${b.dataset.rm}`,"POST",{action:"remove"});refreshDock();}));
+      $("drawerBody").querySelectorAll("[data-pause]").forEach(b=>b.addEventListener("click",async()=>{const act=b.textContent==="pause"?"pause":"resume";await jsend(`/api/torrent/${b.dataset.pause}`,"POST",{action:act});refreshDock();}));
+    }catch(_){$("drawerBody").innerHTML="<div class='empty'>Couldn't load.</div>";}
+  }else if(drawerTab==="events"){
+    try{const d=await jget("/api/events");const evs=d.events||[];
+      $("drawerBody").innerHTML=evs.length?evs.slice().reverse().map(e=>`<div class="hist-row"><span class="he">${esc(e.event)}</span><span class="hn">${esc(e.name||'')}</span></div>`).join(""):"<div class='empty'>No events yet. They appear when downloads finish and get sorted.</div>";
+    }catch(_){$("drawerBody").innerHTML="<div class='empty'>Couldn't load.</div>";}
+  }else{
+    try{const[st,hi]=await Promise.all([jget("/api/history/stats"),jget("/api/history?limit=60")]);
+      const cards=`<div class="stat-cards">
+        <div class="stat-card"><div class="num">${st.completed_count||0}</div><div class="lbl">completed</div></div>
+        <div class="stat-card"><div class="num">${esc(st.completed_bytes_h||'0 B')}</div><div class="lbl">downloaded</div></div>
+        <div class="stat-card"><div class="num">${(st.by_event&&st.by_event.sorted)||0}</div><div class="lbl">sorted</div></div>
+        <div class="stat-card"><div class="num">${(st.by_event&&st.by_event.added)||0}</div><div class="lbl">grabbed</div></div></div>`;
+      const rows=(hi.history||[]).map(h=>`<div class="hist-row"><span class="ht">${esc((h.ts||'').replace('T',' ').slice(5,16))}</span><span class="he">${esc(h.event)}</span><span class="hn">${esc(h.title||h.detail||'')}</span></div>`).join("")||"<div class='muted'>No history yet.</div>";
+      $("drawerBody").innerHTML=cards+rows;
+    }catch(_){$("drawerBody").innerHTML="<div class='empty'>Couldn't load.</div>";}
+  }
+}
+
+// ============ settings (modal) ============
+$("settingsBtn").addEventListener("click",async()=>{
+  const s=await jget("/api/settings");const env=s.env||{};
+  openModal("Settings",`
+    <label class="fld">TMDb API key ${s.tmdb_enabled?'<span style="color:var(--good)">● enabled</span>':'<span class="muted">○ disabled</span>'}</label>
+    <input type="text" id="st_tmdb" value="${esc(s.db&&s.db.tmdb_key||'')}" placeholder="paste TMDb key for title search + posters" style="width:100%">
+    <label class="fld">Jackett URL</label><input type="text" id="st_jurl" value="${esc(env.JACKETT_URL||'')}" style="width:100%">
+    <label class="fld">Auto-remove finished torrents</label><select id="st_rem" style="width:100%"><option value="0" ${env.REMOVE_ON_COMPLETE!=='1'?'selected':''}>off</option><option value="1" ${env.REMOVE_ON_COMPLETE==='1'?'selected':''}>on</option></select>
+    <label class="fld">Notifications (comma-separated URLs)</label><input type="text" id="st_notify" value="${esc(env.NOTIFY_URLS||'')}" style="width:100%">
+    <div class="row2"><div><label class="fld">Theme</label><select id="st_theme" style="width:100%">${['dark','light','auto'].map(t=>`<option ${env.UI_THEME===t?'selected':''}>${t}</option>`).join('')}</select></div>
+    <div><label class="fld">Accent</label><select id="st_accent" style="width:100%">${['blue','green','purple','amber','rose'].map(a=>`<option ${env.UI_ACCENT===a?'selected':''}>${a}</option>`).join('')}</select></div></div>
+    <div style="margin-top:16px"><button class="btn" id="st_save">save changes</button></div>`);
+  $("st_save").addEventListener("click",async()=>{
+    await jsend("/api/settings","PATCH",{values:{tmdb_key:$("st_tmdb").value.trim(),JACKETT_URL:$("st_jurl").value.trim(),
+      REMOVE_ON_COMPLETE:$("st_rem").value,NOTIFY_URLS:$("st_notify").value.trim(),UI_THEME:$("st_theme").value,UI_ACCENT:$("st_accent").value}});
+    toast("Settings saved.");closeModal();refreshMeta();});
 });
 
-/* ---------------- library & monitored shows ---------------- */
-let libSeries=[], libProfiles=[];
-async function openLibrary(){
-  $("libOverlay").classList.add("show");
-  $("libBody").innerHTML="<div style='color:var(--muted)'>loading…</div>";
-  try{
-    [libSeries,libProfiles]=await Promise.all([
-      fetch("/api/series").then(r=>r.json()).then(d=>d.series||[]),
-      fetch("/api/profiles").then(r=>r.json()).then(d=>d.profiles||[]),
-    ]);
-    renderLibrary();
-  }catch(_){ $("libBody").innerHTML="<div style='color:var(--bad)'>Couldn't load library.</div>"; }
-}
-function renderLibrary(){
-  if(!libSeries.length){ $("libBody").innerHTML="<div style='color:var(--muted);padding:10px 0'>No monitored shows yet. Add a show and Cascade will track its episodes, scan your library, and hunt the missing ones.</div>"; return; }
-  $("libBody").innerHTML=libSeries.map(s=>{
-    const pct=s.total?Math.round(s.have/s.total*100):0;
-    const prof=libProfiles.find(p=>p.id===s.profile_id);
-    return `<div class="prof-card">
-      <div class="prof-head"><b>${esc(s.title)}${s.year?` (${s.year})`:''}</b>
-        <span class="prof-actions"><button class="link-btn danger" data-libdel="${s.id}">remove</button></span></div>
-      <div class="prof-meta">
-        <span class="muted">${s.have}/${s.total} episodes</span>
-        ${s.wanted?`<span class="tag ctype tv">${s.wanted} wanted</span>`:'<span class="muted">· complete</span>'}
-        ${prof?`<span class="muted">· ${esc(prof.name)}</span>`:''}
-      </div>
-      <div class="lib-bar"><i style="width:${pct}%"></i></div>
-    </div>`;
-  }).join("");
-  $("libBody").querySelectorAll("[data-libdel]").forEach(b=>b.addEventListener("click",()=>delSeries(+b.dataset.libdel)));
-}
-async function delSeries(id){ try{ await fetch(`/api/series/${id}`,{method:"DELETE"}); toast("Removed."); await openLibrary(); }catch(_){ toast("Remove failed","err"); } }
+// ============ modal helpers ============
+function openModal(title,html){$("modalTitle").textContent=title;$("modalBody").innerHTML=html;$("modal").classList.add("show");}
+function closeModal(){$("modal").classList.remove("show");}
+$("modalClose").addEventListener("click",closeModal);
+$("modal").addEventListener("click",e=>{if(e.target.id==="modal")closeModal();});
 
-function libAddForm(){
-  const opts=`<option value="">no profile (best-seeded)</option>`+libProfiles.map(p=>`<option value="${p.id}">${esc(p.name)}</option>`).join("");
-  $("libBody").innerHTML=`
-    <div class="set-row"><label>Search for a show (TMDb)</label>
-      <input id="lib_q" placeholder="e.g. the office" autocomplete="off"></div>
-    <div class="set-row"><label>Quality profile</label><select id="lib_prof">${opts}</select></div>
-    <div id="lib_results" class="poster-grid" style="margin-top:8px"></div>
-    <div style="margin-top:8px"><button class="wiz-btn ghost" id="lib_cancel">cancel</button></div>`;
-  $("lib_cancel").addEventListener("click",renderLibrary);
-  let t=null;
-  $("lib_q").addEventListener("input",()=>{ clearTimeout(t); t=setTimeout(libSearch,400); });
-  $("lib_q").focus();
-}
-async function libSearch(){
-  const q=$("lib_q").value.trim(); if(!q){ $("lib_results").innerHTML=""; return; }
-  try{
-    const d=await (await fetch(`/api/meta/search?q=${encodeURIComponent(q)}&kind=tv`)).json();
-    const tv=(d.results||[]).filter(r=>r.media_type==='tv');
-    if(!tv.length){ $("lib_results").innerHTML="<div style='color:var(--muted)'>No shows found (need a TMDb key in settings).</div>"; return; }
-    $("lib_results").innerHTML=tv.map(r=>`
-      <div class="poster" data-tmdb="${r.tmdb_id}" data-title="${esc(r.title)}" data-year="${esc(r.year||'')}" data-poster="${esc(r.poster||'')}">
-        <div class="img" style="${r.poster?`background-image:url('${esc(r.poster)}')`:''}">${r.poster?'':'no image'}</div>
-        <div class="meta"><div class="pt">${esc(r.title)}</div><div class="py"><span>${esc(r.year||'')}</span></div></div>
-      </div>`).join("");
-    $("lib_results").querySelectorAll(".poster").forEach(p=>p.addEventListener("click",()=>addShow(p.dataset)));
-  }catch(_){ $("lib_results").innerHTML="<div style='color:var(--bad)'>Search failed.</div>"; }
-}
-async function addShow(d){
-  const body={tmdb_id:+d.tmdb,title:d.title,year:d.year?+d.year:null,poster:d.poster||null,
-    profile_id:$("lib_prof").value?+$("lib_prof").value:null};
-  try{ await fetch("/api/series",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
-    toast(`Now monitoring ${d.title}.`); await openLibrary();
-  }catch(_){ toast("Couldn't add show","err"); }
-}
-$("libraryBtn").addEventListener("click",openLibrary);
-$("libClose").addEventListener("click",()=>$("libOverlay").classList.remove("show"));
-$("libOverlay").addEventListener("click",e=>{ if(e.target.id==="libOverlay") $("libOverlay").classList.remove("show"); });
-$("libAdd").addEventListener("click",libAddForm);
-$("libScan").addEventListener("click",async()=>{
-  $("libScan").disabled=true; $("libScan").textContent="scanning…";
-  try{
-    await fetch("/api/library/scan",{method:"POST"});
-    const rec=await (await fetch("/api/library/reconcile",{method:"POST"})).json();
-    const chk=await (await fetch("/api/subscriptions/check",{method:"POST"})).json();
-    toast(`Reconciled: ${rec.missing||0} missing, ${rec.upgrades||0} upgrades · grabbed ${chk.grabbed||0}.`);
-    await openLibrary();
-  }catch(_){ toast("Scan failed","err"); }
-  finally{ $("libScan").disabled=false; $("libScan").textContent="scan + hunt now"; }
-});
-
-async function refreshMeta(){
-  try{ const r=await fetch("/api/meta/search?q=test"); const d=await r.json(); metaEnabled=!!d.enabled; }
-  catch(_){ metaEnabled=false; }
-  $("modeToggle").hidden=!metaEnabled;
-  if(metaEnabled && searchMode==="release"){ setMode("title"); }
-}
-refreshMeta();
-
-loadConfig();
-
-pollAll();
-setInterval(pollAll, 2000);
+// ============ init ============
+loadStatsbar();setInterval(loadStatsbar,8000);refreshMeta();
 </script>
 </body>
 </html>

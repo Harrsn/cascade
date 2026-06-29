@@ -413,3 +413,27 @@ def test_title_normalization():
     assert nt("Stranger Things [1080p]") == nt("Stranger Things")
     assert nt("Ted (2024) [720p]") == nt("Ted")
     assert nt("Rick and Morty") == nt("Rick & Morty")
+
+
+def test_movie_monitor_and_reconcile(tmp_path, monkeypatch):
+    monkeypatch.setenv("EVENTS_FILE", str(tmp_path / "events.jsonl"))
+    lib = tmp_path / "lib" / "movies" / "Dune (2021)"
+    lib.mkdir(parents=True)
+    (lib / "Dune (2021) 1080p.mkv").write_bytes(b"x" * (60 * 1024 * 1024))
+    monkeypatch.setenv("LIBRARY_ROOT", str(tmp_path / "lib"))
+    import importlib
+    from cascade import config as cfgmod
+    importlib.reload(cfgmod)
+    from cascade import db
+    importlib.reload(db)
+    db.init()
+    from cascade import library as L
+    importlib.reload(L)
+    L.scan()
+    from cascade import movies as M
+    importlib.reload(M)
+    m1 = M.add_movie(1, "Dune", 2021, None, None)
+    m2 = M.add_movie(2, "Dune Part Two", 2024, None, None)
+    assert M.get_movie(m1)["status"] == "have"
+    assert M.get_movie(m2)["status"] == "wanted"
+    assert M.reconcile_all() == {"have": 1, "wanted": 1}

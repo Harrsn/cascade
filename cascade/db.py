@@ -103,6 +103,19 @@ CREATE TABLE IF NOT EXISTS grabbed (
 
 -- ── Library awareness (Sonarr/Radarr-style) ──
 
+-- Monitored movies (Radarr-side): movies Cascade tracks and hunts if missing.
+CREATE TABLE IF NOT EXISTS movies (
+    id           INTEGER PRIMARY KEY AUTOINCREMENT,
+    tmdb_id      INTEGER UNIQUE,
+    title        TEXT NOT NULL,
+    year         INTEGER,
+    poster       TEXT,
+    profile_id   INTEGER,
+    monitored    INTEGER DEFAULT 1,
+    added_ts     TEXT,
+    status       TEXT DEFAULT 'wanted'  -- wanted | have
+);
+
 -- Monitored series: shows Cascade tracks and hunts missing episodes for.
 CREATE TABLE IF NOT EXISTS series (
     id           INTEGER PRIMARY KEY AUTOINCREMENT,

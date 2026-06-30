@@ -770,3 +770,26 @@ def test_sorter_no_duplicate_on_same_share(tmp_path, monkeypatch):
     S.place(src2, dest2, dry=False)
     assert dest2.exists() and src2.exists()        # copied (last resort)
     logging.disable(logging.NOTSET)
+
+
+def test_clean_torrent_name_strips_watermarks():
+    from faucet.clients.transmission import _clean_torrent_name as cn
+    assert cn("[www.UIndex.org](https://www.UIndex.org) - American Dad S01E01 1080p") \
+        == "American Dad S01E01 1080p"
+    assert cn("www.SomeTracker.net - American.Dad.S05E01.1080p") \
+        == "American.Dad.S05E01.1080p"
+    assert "/" not in cn("[x](https://y/z) - Show S01E01")     # no path seps survive
+    assert cn("American Dad S01E01 1080p") == "American Dad S01E01 1080p"  # clean passes
+
+
+def test_sorter_recovers_mangled_path(tmp_path):
+    import logging
+    from faucet import sort as S
+    logging.disable(logging.CRITICAL)
+    real = tmp_path / "American Dad S01E01 Pilot 1080p"
+    real.mkdir()
+    (real / "American Dad S01E01.mkv").write_bytes(b"x" * (60 * 1024 * 1024))
+    mangled = "[www.UIndex.org](https://www.UIndex.org) - American Dad S01E01 Pilot 1080p"
+    rec = S._recover_inputs(str(tmp_path), mangled)
+    assert rec and any(p.exists() for p in rec)
+    logging.disable(logging.NOTSET)

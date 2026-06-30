@@ -260,17 +260,67 @@ def place(src: Path, dest: Path, dry: bool):
 # ----------------------------------------------------------------------------
 # Main
 # ----------------------------------------------------------------------------
+def _recover_inputs(td: str, tn: str) -> list:
+    """When TR_TORRENT_DIR/TR_TORRENT_NAME join to a path that doesn't exist
+    (e.g. the name contains '/' from a tracker URL watermark and shreds the
+    path), recover the real items by scanning TR_TORRENT_DIR for entries that
+    match. We match on a slash-stripped, separator-collapsed comparison so a
+    folder literally named '[site](https://site) - Show S01E01' is still found.
+    """
+    parent = Path(td)
+    if not parent.exists():
+        return []
+
+    def norm(s: str) -> str:
+        # collapse all separators/spaces so mangled vs real names compare equal
+        return "".join(ch for ch in s.lower() if ch.isalnum())
+
+    want = norm(tn)
+    matches = []
+    try:
+        for entry in parent.iterdir():
+            en = norm(entry.name)
+            # exact normalized match, or the real entry is a superstring of the
+            # mangled name's tail (the post-slash remainder)
+            if en == want or (want and (en.endswith(want) or want.endswith(en))):
+                matches.append(entry)
+    except OSError:
+        return []
+    return matches
+
+
 def resolve_inputs(args):
-    """CLI paths if given, else Transmission hook env vars."""
+    """CLI paths if given, else Transmission hook env vars.
+
+    Falls back to scanning TR_TORRENT_DIR when the exact joined path doesn't
+    exist, so torrents whose names contain path separators (tracker URL
+    watermarks) still get sorted.
+    """
     if args.paths:
         return [Path(p) for p in args.paths]
     cp = os.environ.get("FAUCET_PATH") or os.environ.get("CASCADE_PATH")
-    if cp:
-        return [Path(cp)]
     td = os.environ.get("TR_TORRENT_DIR")
     tn = os.environ.get("TR_TORRENT_NAME")
+    if cp:
+        p = Path(cp)
+        if p.exists():
+            return [p]
+        # mangled — try to recover from the dir + name
+        if td and tn:
+            rec = _recover_inputs(td, tn)
+            if rec:
+                logging.info("recovered %d input(s) by scanning %s", len(rec), td)
+                return rec
+        return [p]   # let the caller log 'not found'
     if td and tn:
-        return [Path(td) / tn]
+        p = Path(td) / tn
+        if p.exists():
+            return [p]
+        rec = _recover_inputs(td, tn)
+        if rec:
+            logging.info("recovered %d input(s) by scanning %s", len(rec), td)
+            return rec
+        return [p]
     return []
 
 

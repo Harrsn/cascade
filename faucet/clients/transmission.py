@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import base64
+import re
 from typing import Optional
 
 import requests
@@ -12,6 +13,28 @@ from .base import (AddResult, DownloadClient, DownloadClientError, Transfer,
 # Transmission status codes -> normalized labels
 _STATUS = {0: "stopped", 1: "checking", 2: "checking", 3: "queued",
            4: "downloading", 5: "queued", 6: "seeding"}
+
+
+_URL_MD = re.compile(r"\[([^\]]*)\]\(([^)]*)\)")        # [text](url) markdown
+_TRACKER_PREFIX = re.compile(
+    r"^\s*(?:\[[^\]]*\]\s*[-_.]*\s*|(?:https?://)?www\.[^\s]+\s*[-_.]+\s*)",
+    re.IGNORECASE)
+
+
+def _clean_torrent_name(name: str) -> str:
+    """Strip tracker-site watermarks and any path-separator characters from a
+    torrent name so it can't shred the on-disk folder path.
+
+    Handles: '[www.UIndex.org](https://www.UIndex.org) - Show S01E01',
+    'www.SomeTracker.net - Show S01E01', and bare embedded slashes.
+    """
+    if not name:
+        return name
+    cleaned = _URL_MD.sub(r"\1", name)         # [text](url) -> text
+    cleaned = _TRACKER_PREFIX.sub("", cleaned)  # drop a leading site watermark
+    cleaned = cleaned.replace("/", " ").replace("\\", " ")  # kill path seps
+    cleaned = " ".join(cleaned.split()).strip(" -_.")
+    return cleaned or name
 
 
 class TransmissionClient(DownloadClient):
@@ -89,8 +112,22 @@ class TransmissionClient(DownloadClient):
             args["download-dir"] = download_dir
         a = self._rpc("torrent-add", args)
         t = a.get("torrent-added") or a.get("torrent-duplicate") or {}
-        return AddResult(id=str(t.get("id")) if t.get("id") is not None else None,
-                         name=t.get("name", ""),
+        tid = t.get("id")
+        raw_name = t.get("name", "")
+        # Tracker watermarks sometimes embed a URL in the torrent name, e.g.
+        # '[www.UIndex.org](https://www.UIndex.org) - Show S01E01'. The '/' chars
+        # become path separators and shred the download folder so the sorter
+        # can't find it. Rename the torrent to a clean name at add time.
+        clean = _clean_torrent_name(raw_name)
+        if tid is not None and clean and clean != raw_name:
+            try:
+                self._rpc("torrent-rename-path",
+                          {"ids": [tid], "path": raw_name, "name": clean})
+                raw_name = clean
+            except DownloadClientError:
+                pass  # non-fatal; the sorter's recovery fallback still handles it
+        return AddResult(id=str(tid) if tid is not None else None,
+                         name=raw_name,
                          duplicate="torrent-duplicate" in a)
 
     def list_transfers(self) -> list[Transfer]:

@@ -263,6 +263,9 @@ def _migrate(c) -> None:
         return {r["name"] for r in c.execute(f"PRAGMA table_info({table})").fetchall()}
     add = [
         ("series", "monitor_mode", "TEXT DEFAULT 'all'"),
+        # three-state library status (Sonarr-like): monitored | in_library | ignored
+        ("series", "lib_status", "TEXT DEFAULT 'monitored'"),
+        ("movies", "lib_status", "TEXT DEFAULT 'monitored'"),
         # request/approval flow: tie requests to a real user account, track who
         # approved/decided and when; default-approve trusted users.
         ("requests", "user_id", "INTEGER"),

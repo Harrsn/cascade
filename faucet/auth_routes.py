@@ -168,6 +168,45 @@ def admin_set_autoapprove(uid: int, request: Request, enabled: int,
     return {"status": "ok"}
 
 
+# ── Fix Match (admin) ────────────────────────────────────────────────────────
+@router.get("/api/admin/match-search")
+def admin_match_search(q: str, kind: str,
+                       admin: dict = Depends(require_admin)):
+    """TMDb candidates for the Fix Match picker. kind: 'show' | 'movie'."""
+    from . import fixmatch
+    if kind not in ("show", "movie"):
+        return {"error": "kind must be 'show' or 'movie'"}
+    return {"results": fixmatch.search(q, kind)}
+
+
+@router.post("/api/admin/{kind}/{item_id}/status")
+async def admin_set_status(kind: str, item_id: int, request: Request,
+                           admin: dict = Depends(require_admin)):
+    """Set a title's library status: monitored | in_library | ignored."""
+    verify_csrf(request)
+    from . import fixmatch
+    if kind not in ("show", "movie"):
+        return {"error": "kind must be 'show' or 'movie'"}
+    body = await request.json()
+    res = fixmatch.set_status(kind, item_id, body.get("status", ""))
+    return res
+
+
+@router.post("/api/admin/{kind}/{item_id}/fixmatch")
+async def admin_fix_match(kind: str, item_id: int, request: Request,
+                          admin: dict = Depends(require_admin)):
+    """Re-link a title to a different TMDb entry, re-reconciling immediately."""
+    verify_csrf(request)
+    from . import fixmatch
+    if kind not in ("show", "movie"):
+        return {"error": "kind must be 'show' or 'movie'"}
+    body = await request.json()
+    tmdb_id = body.get("tmdb_id")
+    if not tmdb_id:
+        return {"error": "tmdb_id required"}
+    return fixmatch.fix_match(kind, item_id, int(tmdb_id))
+
+
 # ── public auth endpoints ───────────────────────────────────────────────────
 
 @router.get("/api/auth/me")

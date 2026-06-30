@@ -179,10 +179,12 @@ def admin_match_search(q: str, kind: str,
     return {"results": fixmatch.search(q, kind)}
 
 
-@router.post("/api/admin/{kind}/{item_id}/status")
+@router.post("/api/admin/title/{kind}/{item_id}/status")
 async def admin_set_status(kind: str, item_id: int, request: Request,
                            admin: dict = Depends(require_admin)):
-    """Set a title's library status: monitored | in_library | ignored."""
+    """Set a title's library status: monitored | in_library | ignored.
+    Namespaced under /title/ so the {kind} param can't shadow sibling admin
+    routes like /api/admin/users/{uid}/status."""
     verify_csrf(request)
     from . import fixmatch
     if kind not in ("show", "movie"):
@@ -192,7 +194,7 @@ async def admin_set_status(kind: str, item_id: int, request: Request,
     return res
 
 
-@router.post("/api/admin/{kind}/{item_id}/fixmatch")
+@router.post("/api/admin/title/{kind}/{item_id}/fixmatch")
 async def admin_fix_match(kind: str, item_id: int, request: Request,
                           admin: dict = Depends(require_admin)):
     """Re-link a title to a different TMDb entry, re-reconciling immediately."""

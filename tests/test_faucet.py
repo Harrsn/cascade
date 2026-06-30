@@ -1090,3 +1090,35 @@ def test_dashboard_endpoint(tmp_path, monkeypatch):
     assert d["library"]["shows"] == 1 and d["library"]["movies"] == 1
     assert "transfers" in d and "users" in d and "requests" in d
     assert d["users"]["total"] == 1 and d["users"]["admins"] == 1
+
+
+# ---------------- regression: user disable route collision ----------------
+def test_admin_disable_user_changes_status(client_app):
+    """Regression: /api/admin/users/{uid}/status was being shadowed by the
+    greedy /api/admin/{kind}/{item_id}/status title route, so 'disable' silently
+    no-op'd. The title routes are now namespaced under /title/, so the user
+    status route must actually flip the status."""
+    csrf = client_app.cookies.get("faucet_csrf")
+    H = {"X-CSRF-Token": csrf}
+    # create a second user to disable
+    client_app.post("/api/admin/users",
+                    json={"username": "victim", "password": "pw1234567",
+                          "role": "user", "status": "active"}, headers=H)
+    users = {u["username"]: u for u in client_app.get("/api/admin/users").json()["users"]}
+    uid = users["victim"]["id"]
+    assert users["victim"]["status"] == "active"
+
+    r = client_app.post(f"/api/admin/users/{uid}/status?status=disabled", headers=H)
+    assert r.status_code == 200, r.text
+    users = {u["username"]: u for u in client_app.get("/api/admin/users").json()["users"]}
+    assert users["victim"]["status"] == "disabled"   # the bug: stayed "active"
+
+    # and a disabled user can't log in
+    fresh = type(client_app)(client_app.app)
+    assert fresh.post("/api/auth/login",
+                      json={"username": "victim", "password": "pw1234567"}).status_code != 200
+
+    # re-enable
+    client_app.post(f"/api/admin/users/{uid}/status?status=active", headers=H)
+    users = {u["username"]: u for u in client_app.get("/api/admin/users").json()["users"]}
+    assert users["victim"]["status"] == "active"

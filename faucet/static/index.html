@@ -938,7 +938,7 @@ $("sdHunt").addEventListener("click",async()=>{
 });
 $("sdStatus")&&$("sdStatus").addEventListener("change",async()=>{
   if(!sdCurrentId)return;
-  try{await jsend(`/api/admin/show/${sdCurrentId}/status`,"POST",{status:$("sdStatus").value});
+  try{await jsend(`/api/admin/title/show/${sdCurrentId}/status`,"POST",{status:$("sdStatus").value});
     toast("Status updated.");}
   catch(_){toast("Couldn't update status","err");}
 });
@@ -988,7 +988,7 @@ async function applyFixMatch(tmdbId){
   if(!fixKind||!fixId)return;
   $("fixResults").innerHTML="<div class='muted'>re-linking…</div>";
   try{
-    const r=await jsend(`/api/admin/${fixKind}/${fixId}/fixmatch`,"POST",{tmdb_id:tmdbId});
+    const r=await jsend(`/api/admin/title/${fixKind}/${fixId}/fixmatch`,"POST",{tmdb_id:tmdbId});
     if(r.error){toast(r.error,"err");runFixSearch();return;}
     toast(`Re-linked to ${r.title}.`);
     const k=fixKind,id=fixId;closeFixMatch();
@@ -1152,7 +1152,7 @@ async function openMovieDetail(mid){
 $("mdBack").addEventListener("click",()=>{showPage("movies");document.querySelectorAll(".navlink").forEach(l=>l.classList.toggle("on",l.dataset.page==="movies"));loadMovies();});
 $("mdStatus")&&$("mdStatus").addEventListener("change",async()=>{
   if(!mdCurrentId)return;
-  try{await jsend(`/api/admin/movie/${mdCurrentId}/status`,"POST",{status:$("mdStatus").value});
+  try{await jsend(`/api/admin/title/movie/${mdCurrentId}/status`,"POST",{status:$("mdStatus").value});
     toast("Status updated.");openMovieDetail(mdCurrentId);}
   catch(_){toast("Couldn't update status","err");}
 });

@@ -666,6 +666,24 @@ def api_series_monitor(sid: int, mode: str = Query("all")):
     return {"status": "ok", "mode": mode}
 
 
+@app.post("/api/series/{sid}/profile")
+def api_series_profile(sid: int, profile_id: int | None = Query(None)):
+    """Assign (or clear, with profile_id omitted/0) a quality profile to a show."""
+    with db.connect() as c:
+        c.execute("UPDATE series SET profile_id=? WHERE id=?",
+                  (profile_id or None, sid))
+    return {"status": "ok", "profile_id": profile_id or None}
+
+
+@app.post("/api/movies/{mid}/profile")
+def api_movie_profile(mid: int, profile_id: int | None = Query(None)):
+    """Assign (or clear) a quality profile to a movie."""
+    with db.connect() as c:
+        c.execute("UPDATE movies SET profile_id=? WHERE id=?",
+                  (profile_id or None, mid))
+    return {"status": "ok", "profile_id": profile_id or None}
+
+
 @app.get("/api/series/{sid}/episodes")
 def api_series_episodes(sid: int):
     from . import series as series_mod

@@ -1001,3 +1001,30 @@ def test_filebrowser_path_safety(tmp_path, monkeypatch):
     # no overwrite
     (root / "tvshows" / "dup.mkv").write_bytes(b"y")
     assert "error" in FB.move("tvshows/show.mkv", "tvshows", "dup.mkv")
+
+
+def test_default_profile_fallback(monkeypatch, tmp_path):
+    """A show with no profile_id uses the configured default_profile_id, which
+    must filter out resolutions the default profile excludes (e.g. 480p)."""
+    monkeypatch.setenv("EVENTS_FILE", str(tmp_path / "ev.jsonl"))
+    import importlib, json
+    from faucet import config as cfgmod
+    importlib.reload(cfgmod)
+    from faucet import db
+    importlib.reload(db)
+    db.init()
+    with db.connect() as c:
+        pid = c.execute("INSERT INTO profiles (name,min_seeders,resolutions,sources,language) "
+                        "VALUES ('Default',0,?,?,'en')",
+                        (json.dumps(["1080p", "720p"]), json.dumps(["BluRay"]))).lastrowid
+        sid = c.execute("INSERT INTO series (tmdb_id,title,monitored) VALUES (1,'X',1)").lastrowid
+    db.set_setting("default_profile_id", pid)
+    from faucet import scheduler as S
+    importlib.reload(S)
+    prof = S._load_profile_for_series(sid)
+    assert prof and prof["name"] == "Default"
+    from faucet import profiles as P
+    rels = [{"title": "X 480p", "seeders": 99, "badges": {"res": "480p"}},
+            {"title": "X 1080p", "seeders": 1, "badges": {"res": "1080p"}}]
+    ranked = P.rank(rels, prof)
+    assert len(ranked) == 1 and "1080p" in ranked[0]["title"]

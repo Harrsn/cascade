@@ -317,18 +317,30 @@ def hunt_wanted(series_filter=None, max_override=None) -> dict:
 
 def _load_profile_for_movie(movie_id):
     if not movie_id:
-        return None
+        return _default_profile()
     with db.connect() as c:
         row = c.execute("SELECT profile_id FROM movies WHERE id=?", (movie_id,)).fetchone()
-    return _load_profile(row["profile_id"]) if row else None
+    p = _load_profile(row["profile_id"]) if row and row["profile_id"] else None
+    return p or _default_profile()
+
+
+def _default_profile():
+    """The global fallback profile, applied to shows/movies that have no profile
+    of their own. Set via the 'default_profile_id' setting. None if unset."""
+    try:
+        pid = db.get_setting("default_profile_id", None)
+    except Exception:                            # noqa: BLE001
+        pid = None
+    return _load_profile(int(pid)) if pid else None
 
 
 def _load_profile_for_series(series_id):
     if not series_id:
-        return None
+        return _default_profile()
     with db.connect() as c:
         row = c.execute("SELECT profile_id FROM series WHERE id=?", (series_id,)).fetchone()
-    return _load_profile(row["profile_id"]) if row else None
+    p = _load_profile(row["profile_id"]) if row and row["profile_id"] else None
+    return p or _default_profile()
 
 
 def run_once() -> dict:

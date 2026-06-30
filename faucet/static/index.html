@@ -644,7 +644,7 @@ $("sdStatus")&&$("sdStatus").addEventListener("change",async()=>{
 // shared: fill a <select> with the profile list + select current
 function fillProfileSelect(sel,current){
   if(!sel)return;
-  sel.innerHTML=`<option value="">profile: default</option>`+
+  sel.innerHTML=`<option value="">— use global default —</option>`+
     profilesCache.map(p=>`<option value="${p.id}" ${p.id===current?'selected':''}>profile: ${esc(p.name)}</option>`).join("");
 }
 $("sdProfile")&&$("sdProfile").addEventListener("change",async()=>{

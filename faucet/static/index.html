@@ -1391,6 +1391,11 @@ $("settingsBtn").addEventListener("click",async()=>{
       <div class="row2"><div><label class="fld">Client user</label><input type="text" id="st_cuser" value="${esc(env.CLIENT_USER||'')}" style="width:100%"></div>
         <div><label class="fld">Client password ${env.CLIENT_PASS_SET?'<span class="pchip ok">✓ set</span>':'<span class="pchip muted">none</span>'}</label>
         <input type="password" id="st_cpass" value="" placeholder="${env.CLIENT_PASS_SET?'•••••• (unchanged)':'set password'}" style="width:100%"></div></div>
+      <div style="margin-top:16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+        <button class="btn ghost" id="st_test">Test connections</button>
+        <span class="muted" style="font-size:11.5px">checks Jackett + the download client live</span>
+      </div>
+      <div id="st_testres" style="margin-top:12px;display:none"></div>
     </div>
 
     <div class="set-sec" data-sec="meta">
@@ -1434,6 +1439,28 @@ $("settingsBtn").addEventListener("click",async()=>{
     $("modalBody").querySelectorAll(".set-tab").forEach(x=>x.classList.toggle("on",x===t));
     $("modalBody").querySelectorAll(".set-sec").forEach(x=>x.classList.toggle("on",x.dataset.sec===sec));
   }));
+  $("st_test").addEventListener("click",async()=>{
+    const btn=$("st_test"); btn.disabled=true; btn.textContent="testing…";
+    const res=$("st_testres"); res.style.display="block";
+    res.innerHTML='<span class="muted" style="font-size:12px">checking…</span>';
+    // send currently-typed values; null fields fall back to saved config server-side
+    const pw=$("st_cpass").value;
+    const payload={
+      jackett_url:$("st_jurl").value.trim(), jackett_api_key:null, jackett_indexer:$("st_jidx").value.trim(),
+      client_kind:$("st_client").value, client_url:$("st_curl").value.trim(),
+      client_user:$("st_cuser").value.trim(), client_pass:pw||null,
+    };
+    try{
+      const r=await jsend("/api/settings/test","POST",payload);
+      const row=(label,o)=>{ const ok=o&&o.ok;
+        return `<div style="display:flex;align-items:center;gap:8px;padding:7px 0">
+          <span class="pchip ${ok?'ok':'bad'}">${ok?'✓ ok':'✕ fail'}</span>
+          <b style="font-size:12.5px">${label}</b>
+          <span class="muted" style="font-size:12px">${esc((o&&o.msg)||'')}</span></div>`; };
+      res.innerHTML=row("Indexer (Jackett)",r.indexer)+row("Download client",r.client);
+    }catch(e){ res.innerHTML=`<span class="pchip bad">✕</span> <span class="muted" style="font-size:12px">${esc(e.message||'test failed')}</span>`; }
+    finally{ btn.disabled=false; btn.textContent="Test connections"; }
+  });
   $("st_save").addEventListener("click",async()=>{
     const vals={
       tmdb_key:$("st_tmdb").value.trim(),

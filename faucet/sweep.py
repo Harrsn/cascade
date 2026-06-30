@@ -37,6 +37,17 @@ from . import config
 
 VIDEO_EXTS = {".mkv", ".mp4", ".avi", ".m4v", ".mov", ".ts", ".wmv", ".flv", ".webm"}
 
+# Directory names that mean "this is not a finished release" — staging areas,
+# partial-download trees, and client scratch dirs. A top-level item under
+# complete/ whose name is one of these, OR which contains an `incomplete/`
+# subtree, is never swept (those are in-progress or migration leftovers, not
+# completed downloads). Matched case-insensitively.
+EXCLUDE_NAMES = {"temp", "tmp", "incomplete", "incomplete_downloads",
+                 ".incomplete", "partial", "_unpack", "_failed"}
+# File suffixes that signal a partial download — their presence means the item
+# isn't done, so skip the whole item.
+PARTIAL_SUFFIXES = {".part", ".!qb", ".bts", ".dctmp"}
+
 
 def _complete_dir() -> Path:
     explicit = os.environ.get("COMPLETE_DIR")
@@ -44,6 +55,26 @@ def _complete_dir() -> Path:
         return Path(explicit)
     dl = os.environ.get("DOWNLOAD_DIR") or "/downloads"
     return Path(dl) / "complete"
+
+
+def _is_excluded(item: Path) -> str | None:
+    """Return a reason string if this item must NOT be swept, else None.
+
+    Guards against in-progress and staging content that looks 'settled' by mtime
+    but isn't a finished release (e.g. an old `temp/data/torrents/incomplete/`
+    migration tree parked in complete/)."""
+    if item.name.lower() in EXCLUDE_NAMES:
+        return f"staging/in-progress dir name ('{item.name}')"
+    if item.is_dir():
+        for p in item.rglob("*"):
+            # any nested incomplete/temp dir => not a clean release
+            if p.is_dir() and p.name.lower() in EXCLUDE_NAMES:
+                return f"contains an in-progress subtree ('{p.name}/')"
+            if p.is_file() and p.suffix.lower() in PARTIAL_SUFFIXES:
+                return f"contains a partial-download file ('{p.name}')"
+    elif item.suffix.lower() in PARTIAL_SUFFIXES:
+        return "partial-download file"
+    return None
 
 
 def _newest_mtime(item: Path) -> float:
@@ -107,8 +138,13 @@ def main() -> int:
         log.info("Nothing in %s — clean.", cdir)
         return 0
 
-    swept = skipped_active = skipped_novideo = failed = 0
+    swept = skipped_active = skipped_novideo = skipped_excluded = failed = 0
     for item in items:
+        reason = _is_excluded(item)
+        if reason:
+            skipped_excluded += 1
+            log.info("SKIP (%s): %s", reason, item.name)
+            continue
         if not _has_video(item):
             skipped_novideo += 1
             log.info("SKIP (no video): %s", item.name)
@@ -128,8 +164,10 @@ def main() -> int:
             log.warning("sort returned rc=%d for %s", rc, item.name)
 
     # one summary line; only record a real event if we actually did work
-    log.info("Sweep done: %d sorted, %d still-active, %d no-video, %d failed (dry=%s).",
-             swept, skipped_active, skipped_novideo, failed, args.dry_run)
+    log.info("Sweep done: %d sorted, %d still-active, %d excluded, %d no-video, "
+             "%d failed (dry=%s).",
+             swept, skipped_active, skipped_excluded, skipped_novideo,
+             failed, args.dry_run)
     if swept and not args.dry_run:
         try:
             from .hook import write_event

@@ -117,7 +117,7 @@ _USER_READABLE = ("/api/series", "/api/movies", "/api/meta/")
 _ADMIN_ALWAYS = (
     "/api/search", "/api/indexers", "/api/torrent", "/api/transfers",
     "/api/add", "/api/profiles", "/api/subscriptions", "/api/library",
-    "/api/settings", "/api/setup", "/api/admin", "/api/stats", "/api/config",
+    "/api/settings", "/api/admin", "/api/stats", "/api/config",
     "/api/events", "/api/history", "/api/wanted",
 )
 
@@ -409,83 +409,56 @@ def api_config():
 
 
 # ----------------------------------------------------------------------------
-# First-run setup wizard
+# Connection test (used by the Settings panel)
 # ----------------------------------------------------------------------------
-class WizardTest(BaseModel):
-    # indexer
+class ConnTest(BaseModel):
+    # all optional: when omitted, the current saved config is tested instead,
+    # so the Settings "Test connections" button works before OR after saving.
     jackett_url: str | None = None
     jackett_api_key: str | None = None
-    jackett_indexer: str | None = "all"
-    # client
+    jackett_indexer: str | None = None
     client_kind: str | None = None
     client_url: str | None = None
-    client_user: str | None = ""
-    client_pass: str | None = ""
+    client_user: str | None = None
+    client_pass: str | None = None
 
 
-class WizardSave(WizardTest):
-    library_root: str | None = None
-    download_dir: str | None = None
-    notify_urls: str | None = None
-    ui_theme: str | None = None
-    ui_accent: str | None = None
-    app_title: str | None = None
+@app.post("/api/settings/test")
+def api_settings_test(w: ConnTest):
+    """Live-validate indexer + download-client credentials without saving.
+    Any field left null falls back to the current configuration, so this can
+    test typed-but-unsaved values or verify what's already live.
+    (Admin-gated by the auth middleware via the /api/settings prefix.)"""
+    c = cfg()
+    j_url = (w.jackett_url if w.jackett_url is not None else c.jackett_url).rstrip("/")
+    j_key = w.jackett_api_key if w.jackett_api_key is not None else c.jackett_api_key
+    j_idx = w.jackett_indexer if w.jackett_indexer is not None else c.jackett_indexer
+    k_kind = w.client_kind if w.client_kind is not None else c.client_kind
+    k_url = w.client_url if w.client_url is not None else c.client_url
+    k_user = w.client_user if w.client_user is not None else c.client_user
+    # password is write-only in the editor: a null here means "use the saved one"
+    k_pass = w.client_pass if w.client_pass is not None else c.client_pass
 
-
-@app.post("/api/setup/test")
-def api_setup_test(w: WizardTest):
-    """Validate indexer + client credentials live, without saving anything."""
     result = {"indexer": None, "client": None}
     # indexer: a real search call is the only true test of the key
-    if w.jackett_url and w.jackett_api_key:
+    if j_url and j_key:
         try:
-            searchmod.search(w.jackett_url.rstrip("/"), w.jackett_api_key,
-                             w.jackett_indexer or "all", "test", "all", 1, 10)
+            searchmod.search(j_url, j_key, j_idx or "all", "test", "all", 1, 10)
             result["indexer"] = {"ok": True, "msg": "Indexer reachable, key accepted."}
         except searchmod.SearchError as e:
             result["indexer"] = {"ok": False, "msg": str(e)}
     else:
-        result["indexer"] = {"ok": False, "msg": "URL and API key required."}
-    # client
-    if w.client_kind and w.client_url:
+        result["indexer"] = {"ok": False, "msg": "Jackett URL and API key required."}
+    # client: ping + auth
+    if k_kind and k_url:
         try:
-            make_client(w.client_kind, w.client_url, w.client_user or "",
-                        w.client_pass or "", 10).test()
-            result["client"] = {"ok": True, "msg": f"{w.client_kind} reachable, auth OK."}
+            make_client(k_kind, k_url, k_user or "", k_pass or "", 10).test()
+            result["client"] = {"ok": True, "msg": f"{k_kind} reachable, auth OK."}
         except Exception as e:                       # noqa: BLE001
             result["client"] = {"ok": False, "msg": str(e)}
     else:
         result["client"] = {"ok": False, "msg": "Client type and URL required."}
     return result
-
-
-@app.post("/api/setup/save")
-def api_setup_save(w: WizardSave):
-    """Persist wizard values and hot-reload cfg(). Returns the new state."""
-    from .config import save
-    mapping = {
-        "JACKETT_URL": (w.jackett_url or "").rstrip("/") or None,
-        "JACKETT_API_KEY": w.jackett_api_key,
-        "JACKETT_INDEXER": w.jackett_indexer,
-        "DOWNLOAD_CLIENT": w.client_kind,
-        "CLIENT_URL": w.client_url,
-        "CLIENT_USER": w.client_user,
-        "CLIENT_PASS": w.client_pass,
-        "LIBRARY_ROOT": w.library_root,
-        "DOWNLOAD_DIR": w.download_dir,
-        "NOTIFY_URLS": w.notify_urls,
-        "UI_THEME": w.ui_theme,
-        "UI_ACCENT": w.ui_accent,
-        "APP_TITLE": w.app_title,
-    }
-    clean = {k: v for k, v in mapping.items() if v is not None and v != ""}
-    try:
-        save(clean)
-    except OSError as e:
-        raise HTTPException(500, f"Couldn't write config file: {e}. "
-                                 "Is the /config volume writable?")
-    log.info("Setup wizard saved config (%d keys).", len(clean))
-    return {"status": "ok", "configured": cfg().configured()}
 
 
 @app.get("/api/indexers")

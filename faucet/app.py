@@ -220,6 +220,7 @@ def api_transfers():
             "id": t.id, "name": t.name, "percent": t.percent,
             "down_h": searchmod.human_size(t.down_rate) + "/s",
             "status": t.status, "eta_h": _fmt_eta(t.eta), "ratio": t.ratio,
+            "size": t.size,
             "size_h": searchmod.human_size(t.size), "error": t.error, "done": t.done,
         })
     out.sort(key=lambda x: (x["done"], -x["percent"]))
@@ -343,10 +344,21 @@ def api_dashboard():
         def scalar(q, *a):
             row = c.execute(q, a).fetchone()
             return (row[0] if row else 0) or 0
+        # episodes "have" can't use a series_id join: library_episodes are matched
+        # to series by normalized title (same as reconcile / the Shows page), not
+        # by a stored series_id. Compute the same way so the count is real.
+        from .library import normalize_title
+        series_titles = {normalize_title(r["title"])
+                         for r in c.execute("SELECT title FROM series").fetchall()}
+        lib_eps = c.execute(
+            "SELECT show_name, season, episode FROM library_episodes").fetchall()
+        episodes_have = sum(
+            1 for r in lib_eps
+            if normalize_title(r["show_name"] or "") in series_titles)
         out["library"] = {
             "shows": scalar("SELECT COUNT(*) FROM series"),
             "movies": scalar("SELECT COUNT(*) FROM movies"),
-            "episodes_have": scalar("SELECT COUNT(*) FROM library_episodes WHERE series_id IS NOT NULL"),
+            "episodes_have": episodes_have,
             "episodes_total": scalar("SELECT COUNT(*) FROM series_episodes"),
             "movies_have": scalar("SELECT COUNT(*) FROM movies WHERE status='have'"),
             "wanted": scalar("SELECT COUNT(*) FROM wanted WHERE status='wanted'"),

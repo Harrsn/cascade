@@ -137,7 +137,48 @@
   .poster .pt{font-size:12px;font-weight:600;line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
   .poster .py{font-size:11px;color:var(--muted);margin-top:2px;}
 
-  /* library/movie cards — wide cinematic "filmstrip" rows */
+  /* ── dashboard ── */
+  .dsection-label{font-family:var(--mono);font-size:11px;text-transform:uppercase;letter-spacing:.09em;
+    color:var(--muted);margin:26px 0 12px;display:flex;align-items:center;gap:9px;}
+  .dsection-label:first-child{margin-top:4px;}
+  .dcount-badge{background:var(--accent);color:var(--bg);border-radius:10px;padding:0 7px;font-size:10px;font-weight:600;}
+  .dstat-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px;}
+  .dstat{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:16px 18px;}
+  .dstat-k{font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);}
+  .dstat-v{font-family:var(--disp);font-size:30px;font-weight:700;letter-spacing:-0.02em;margin-top:4px;line-height:1;}
+  .dstat-v.good{color:var(--good);} .dstat-v.warn{color:var(--accent);} .dstat-v.bad{color:var(--bad);}
+  .dstat-v.muted{color:var(--muted);}
+  .dstat-sub{font-size:12px;color:var(--muted);margin-top:6px;}
+  .dcard{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:18px;margin-bottom:12px;}
+  .dempty{color:var(--muted);font-size:13px;text-align:center;padding:24px;}
+  /* disk hero */
+  .dcard-disk{padding:20px 22px;}
+  .ddisk-head{display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:12px;}
+  .ddisk-used{font-family:var(--disp);font-size:26px;font-weight:700;letter-spacing:-0.02em;}
+  .ddisk-pct{font-family:var(--disp);font-size:34px;font-weight:800;letter-spacing:-0.03em;}
+  .ddisk-pct.good{color:var(--good);} .ddisk-pct.warn{color:var(--accent);} .ddisk-pct.bad{color:var(--bad);}
+  .ddisk-bar{height:8px;background:var(--line-hi);border-radius:5px;overflow:hidden;}
+  .ddisk-bar i{display:block;height:100%;border-radius:5px;transition:width .5s;}
+  .ddisk-bar i.good{background:var(--good);} .ddisk-bar i.warn{background:var(--accent);} .ddisk-bar i.bad{background:var(--bad);}
+  /* transfers */
+  .dxfer{padding:9px 0;border-bottom:1px solid var(--line);}
+  .dxfer:last-child{border-bottom:none;padding-bottom:0;} .dxfer:first-child{padding-top:0;}
+  .dxfer-top{display:flex;justify-content:space-between;gap:12px;margin-bottom:6px;font-size:13px;}
+  .dxfer-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .dxfer-rate{font-family:var(--mono);font-size:11px;color:var(--muted);white-space:nowrap;}
+  .dxfer-bar{height:4px;background:var(--line-hi);border-radius:3px;overflow:hidden;}
+  .dxfer-bar i{display:block;height:100%;background:var(--accent);transition:width .5s;}
+  /* recent */
+  .drecent-head{font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:10px;}
+  .drecent-row{display:flex;align-items:center;gap:10px;padding:5px 0;font-size:13px;}
+  .drecent-ev{font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:.04em;
+    padding:1px 7px;border-radius:10px;border:1px solid var(--line-hi);color:var(--muted);flex-shrink:0;}
+  .drecent-ev.completed,.drecent-ev.sorted{color:var(--good);border-color:color-mix(in srgb,var(--good) 40%,transparent);}
+  .drecent-ev.added{color:var(--accent);border-color:color-mix(in srgb,var(--accent) 40%,transparent);}
+  .drecent-ev.failed,.drecent-ev.removed{color:var(--bad);border-color:color-mix(in srgb,var(--bad) 40%,transparent);}
+  .drecent-title{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .dlink{color:var(--accent);cursor:pointer;}
+  .dlink:hover{color:var(--accent-soft);}
   .cardgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(380px,1fr));gap:14px;}
   .lcard{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:16px 18px;
     display:flex;gap:18px;align-items:center;position:relative;overflow:hidden;
@@ -364,7 +405,8 @@
 
 <nav class="topnav">
   <span class="brand">Faucet<span class="dot"></span></span>
-  <span class="navlink on" data-page="search">Search</span>
+  <span class="navlink on" data-page="dashboard">Dashboard</span>
+  <span class="navlink" data-page="search">Search</span>
   <span class="navlink" data-page="shows">Shows</span>
   <span class="navlink" data-page="movies">Movies</span>
   <span class="navlink" data-page="subs">Auto-grab</span>
@@ -394,18 +436,24 @@
 
 <!-- mobile bottom tab bar -->
 <nav class="botnav" id="botnav">
-  <span class="botlink on" data-page="search"><i>⌕</i><b>Search</b></span>
+  <span class="botlink on" data-page="dashboard"><i>◳</i><b>Home</b></span>
   <span class="botlink" data-page="shows"><i>▤</i><b>Shows</b></span>
   <span class="botlink" data-page="movies"><i>▦</i><b>Movies</b></span>
-  <span class="botlink" data-page="subs"><i>⟳</i><b>Auto</b></span>
+  <span class="botlink" data-page="search"><i>⌕</i><b>Search</b></span>
   <span class="botlink" id="botMore"><i>⋯</i><b>More</b></span>
 </nav>
 
 <div class="wrap">
 
   <!-- ============ SEARCH PAGE ============ -->
-  <section class="page on" id="page-search">
-    <div class="statsbar" id="statsbar"></div>
+  <!-- ============ DASHBOARD PAGE ============ -->
+  <section class="page on" id="page-dashboard">
+    <div class="page-head"><h1>Overview</h1><span class="count" id="dashClock"></span></div>
+    <div id="dashBody"><div class="muted">loading…</div></div>
+  </section>
+
+  <section class="page" id="page-search">
+    <div class="page-head"><h1>Search</h1></div>
     <div class="mode-toggle" id="modeToggle" hidden>
       <button class="mode on" data-mode="title">by title</button>
       <button class="mode" data-mode="release">by release</button>
@@ -604,7 +652,7 @@ async function jget(u){const r=await fetch(u);if(!r.ok)throw new Error(r.status)
 async function jsend(u,m,b){const r=await fetch(u,{method:m,headers:{"Content-Type":"application/json","X-CSRF-Token":csrfToken()},body:b?JSON.stringify(b):undefined});if(!r.ok)throw new Error((await r.json().catch(()=>({}))).detail||r.status);return r.json();}
 
 // ============ navigation ============
-const PAGES=["search","shows","movies","subs","profiles"];
+const PAGES=["dashboard","search","shows","movies","subs","profiles"];
 function nav(page){
   // hide the detail sub-pages AND the requests page whenever we navigate to a
   // top-level page (requests is injected separately, so hide it explicitly)
@@ -614,6 +662,7 @@ function nav(page){
     const bl=document.querySelector(`.botlink[data-page="${p}"]`);if(bl)bl.classList.toggle("on",p===page); });
   // clear requests nav highlight too
   const rl=document.querySelector('.navlink[data-page="requests"]');if(rl)rl.classList.toggle("on",page==="requests");
+  if(page==="dashboard")loadDashboard();
   if(page==="shows")loadShows();
   if(page==="movies")loadMovies();
   if(page==="subs")loadSubs();
@@ -708,19 +757,90 @@ async function refreshMeta(){
   $("modeToggle").hidden=!metaEnabled;if(metaEnabled&&searchMode==="release")setMode("title");
 }
 
-// ============ stats bar ============
-async function loadStatsbar(){
-  try{const s=await jget("/api/stats");
-    const disk=s.disk||{};const dpct=disk.total?Math.round((disk.total-disk.free)/disk.total*100):0;
-    const dc=dpct>90?"bad":dpct>75?"warn":"";
-    $("statsbar").innerHTML=`
-      <div class="stat"><span class="k">disk free</span><span class="v">${esc(human(disk.free))} / ${esc(human(disk.total))}</span><div class="diskbar"><i class="${dc}" style="width:${dpct}%"></i></div></div>
-      <div class="stat"><span class="k">↓ total</span><span class="v">${esc(s.down_total_h||'0 B/s')}</span></div>
-      <div class="stat"><span class="k">↑ total</span><span class="v">${esc(s.up_total_h||'0 B/s')}</span></div>
-      <div class="stat"><span class="k">downloading</span><span class="v ${s.downloading?'warn':''}">${s.downloading||0}</span></div>
-      <div class="stat"><span class="k">seeding</span><span class="v good">${s.seeding||0}</span></div>`;
-    $("activeCount").textContent=s.downloading||0;$("activeCount").className="badge"+(s.downloading?"":" zero");
-  }catch(_){}
+// ============ dashboard ============
+function dashStat(label,value,sub,cls){
+  return `<div class="dstat"><div class="dstat-k">${esc(label)}</div>
+    <div class="dstat-v ${cls||''}">${value}</div>${sub?`<div class="dstat-sub">${sub}</div>`:''}</div>`;
+}
+function etaH(s){ if(!s||s<0)return''; if(s<60)return s+'s'; if(s<3600)return Math.round(s/60)+'m';
+  return Math.floor(s/3600)+'h '+Math.round((s%3600)/60)+'m'; }
+async function loadDashboard(){
+  const host=$("dashBody"); if(!host)return;
+  let d;
+  try{ d=await jget("/api/dashboard"); }
+  catch(e){ host.innerHTML=`<div class="empty">Couldn't load the overview.</div>`; return; }
+  // keep the activity badge in sync
+  const dl=(d.transfers&&d.transfers.downloading)||0;
+  if($("activeCount")){$("activeCount").textContent=dl;$("activeCount").className="badge"+(dl?"":" zero");}
+
+  const disk=d.disk, tr=d.transfers||{}, lib=d.library||{}, rq=d.requests||{}, us=d.users||{};
+  const dpct=disk?disk.pct_used:0;
+  const diskCls=dpct>90?"bad":dpct>78?"warn":"good";
+
+  // ── storage + system (lead) ──
+  let html=`<div class="dsection-label">Storage & system</div>
+  <div class="dcard dcard-disk">
+    <div class="ddisk-head">
+      <div><div class="ddisk-used">${disk?esc(disk.used_h):'—'} <span class="muted">used</span></div>
+        <div class="muted" style="font-size:12px">${disk?esc(disk.free_h)+' free of '+esc(disk.total_h):'disk unavailable'}</div></div>
+      <div class="ddisk-pct ${diskCls}">${disk?dpct+'%':'—'}</div>
+    </div>
+    <div class="ddisk-bar"><i class="${diskCls}" style="width:${dpct}%"></i></div>
+  </div>
+  <div class="dstat-row">
+    ${dashStat("Indexer",tr.client_ok?'online':'—','Jackett',tr.client_ok?'good':'muted')}
+    ${dashStat("Download client",tr.client_ok?'online':'offline',tr.client_ok?'Transmission':'check connection',tr.client_ok?'good':'bad')}
+    ${dashStat("↓ down",tr.down_h||'0 B/s')}
+    ${dashStat("↑ up",tr.up_h||'0 B/s')}
+  </div>`;
+
+  // ── live activity ──
+  html+=`<div class="dsection-label">Live activity ${tr.active_count?`<span class="dcount-badge">${tr.active_count}</span>`:''}</div>`;
+  if(tr.active&&tr.active.length){
+    html+=`<div class="dcard">`+tr.active.map(a=>`
+      <div class="dxfer">
+        <div class="dxfer-top"><span class="dxfer-name">${esc(a.name)}</span>
+          <span class="dxfer-rate">${a.percent}% · ${esc(a.down_h)}${a.eta>0?' · '+etaH(a.eta)+' left':''}</span></div>
+        <div class="dxfer-bar"><i style="width:${a.percent}%"></i></div>
+      </div>`).join("")+`</div>`;
+  }else{
+    html+=`<div class="dcard dempty">${tr.client_ok?'Nothing downloading right now.':'Download client offline — transfers unavailable.'}</div>`;
+  }
+  // recent grabs
+  if(d.recent&&d.recent.length){
+    html+=`<div class="dcard drecent"><div class="drecent-head">Recent</div>`+
+      d.recent.map(r=>`<div class="drecent-row"><span class="drecent-ev ${r.event}">${esc(r.event)}</span>
+        <span class="drecent-title">${esc(r.title||'—')}</span>
+        <span class="muted">${r.size_h&&r.size_h!=='0 B'?esc(r.size_h):''}</span></div>`).join("")+`</div>`;
+  }
+
+  // ── library health ──
+  const epPct=lib.episodes_total?Math.round(lib.episodes_have/lib.episodes_total*100):0;
+  html+=`<div class="dsection-label">Library</div>
+  <div class="dstat-row">
+    ${dashStat("Shows",lib.shows||0)}
+    ${dashStat("Movies",lib.movies||0)}
+    ${dashStat("Episodes",`${lib.episodes_have||0}<span class="muted" style="font-size:14px">/${lib.episodes_total||0}</span>`,`${epPct}% complete`)}
+    ${dashStat("Wanted",lib.wanted||0,'missing',(lib.wanted?'warn':'good'))}
+  </div>`;
+
+  // ── requests & users ──
+  html+=`<div class="dsection-label">Requests & users</div>
+  <div class="dstat-row">
+    ${dashStat("Pending requests",rq.pending||0,rq.pending?'<span class="dlink" data-go="requests">review →</span>':'all clear',(rq.pending?'warn':'good'))}
+    ${dashStat("Members",us.active||0,`${us.admins||0} admin${us.admins===1?'':'s'}`)}
+    ${dashStat("Awaiting approval",us.pending||0,us.pending?'<span class="dlink" data-go="users">approve →</span>':'none',(us.pending?'warn':'good'))}
+    ${dashStat("Total requests",rq.total||0)}
+  </div>`;
+
+  host.innerHTML=html;
+  // wire quick-links
+  host.querySelectorAll("[data-go]").forEach(el=>el.addEventListener("click",()=>{
+    const g=el.dataset.go;
+    if(g==="requests")navRequests();
+    else if(g==="users"&&$("usersBtn"))$("usersBtn").click();
+  }));
+  if($("dashClock"))$("dashClock").textContent=new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
 }
 
 // ============ shows ============
@@ -1271,11 +1391,12 @@ function applyRoleUI(){
   if(admin) startAdminPolling();
   // admin-only nav surfaces
   if(admin) $("usersBtn").style.display="";
-  // hide indexer Search, Auto-grab, Profiles, Settings, Activity from non-admins
-  ["search","subs","profiles"].forEach(p=>{
+  // hide Dashboard, indexer Search, Auto-grab, Profiles from non-admins
+  ["dashboard","search","subs","profiles"].forEach(p=>{
     const el=document.querySelector(`.navlink[data-page="${p}"]`);
     if(el) el.style.display = admin ? "" : "none";
   });
+  if(admin){ try{ nav("dashboard"); }catch(_){} }
   if(!admin){
     $("settingsBtn").style.display="none";
     $("activityBtn").style.display="none";
@@ -1451,8 +1572,14 @@ loadMe();
 refreshMeta();
 
 function startAdminPolling(){
-  loadStatsbar();
-  if(!window._statsTimer) window._statsTimer=setInterval(loadStatsbar,8000);
+  // refresh the dashboard whenever it's the active page; always keep the
+  // activity badge fresh via the same call.
+  const tick=()=>{ const onDash=$("page-dashboard")&&$("page-dashboard").classList.contains("on");
+    if(onDash) loadDashboard();
+    else jget("/api/dashboard").then(d=>{const dl=(d.transfers&&d.transfers.downloading)||0;
+      if($("activeCount")){$("activeCount").textContent=dl;$("activeCount").className="badge"+(dl?"":" zero");}}).catch(()=>{}); };
+  tick();
+  if(!window._statsTimer) window._statsTimer=setInterval(tick,8000);
 }
 </script>
 </body>

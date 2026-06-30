@@ -305,12 +305,18 @@ def resolve_inputs(args):
         p = Path(cp)
         if p.exists():
             return [p]
-        # mangled — try to recover from the dir + name
-        if td and tn:
-            rec = _recover_inputs(td, tn)
-            if rec:
-                logging.info("recovered %d input(s) by scanning %s", len(rec), td)
-                return rec
+        # Mangled path: the name contains '/' (tracker URL watermark), so even
+        # p.parent is wrong. Walk up to the first ancestor that actually exists
+        # on disk (the real download/complete dir), then scan it for a match.
+        # That ancestor is container-translated already (cp came from the hook).
+        scan = p
+        while scan != scan.parent and not scan.exists():
+            scan = scan.parent
+        match_name = tn or Path(cp).name
+        rec = _recover_inputs(str(scan), match_name)
+        if rec:
+            logging.info("recovered %d input(s) by scanning %s", len(rec), scan)
+            return rec
         return [p]   # let the caller log 'not found'
     if td and tn:
         p = Path(td) / tn

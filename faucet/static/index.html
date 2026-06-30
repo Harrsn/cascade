@@ -130,6 +130,13 @@
   .lnk.danger{color:var(--bad);}
   /* regular (non-admin) users: hide destructive/management controls */
   body.role-user .remove,body.role-user [data-act="remove"],body.role-user .huntbtn{display:none !important;}
+  body.role-user .admin-only{display:none !important;}
+  /* fix-match result rows */
+  .fix-row{display:flex;gap:12px;padding:10px;border:1px solid var(--line);border-radius:8px;margin-bottom:8px;align-items:center;cursor:pointer;}
+  .fix-row:hover{border-color:var(--line-hi);background:var(--bg-hi,rgba(255,255,255,.03));}
+  .fix-row img{width:46px;height:69px;object-fit:cover;border-radius:4px;flex-shrink:0;background:#222;}
+  .fix-row .fr-t{font-weight:600;}
+  .fix-row .fr-o{font-size:12px;color:var(--muted);margin-top:3px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
   .reqcard{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px 14px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;gap:12px;}
   .reqacts{display:flex;gap:6px;flex-shrink:0;}
   .btn.sm{padding:5px 10px;font-size:12px;}
@@ -303,11 +310,17 @@
       <button class="btn ghost" id="sdBack">← shows</button>
       <h1 id="sdTitle"></h1><span class="count" id="sdCount"></span>
       <div class="ph-actions">
+        <select id="sdStatus" title="Library status" class="admin-only" style="margin-right:8px">
+          <option value="monitored">status: monitored</option>
+          <option value="in_library">status: in library</option>
+          <option value="ignored">status: ignored</option>
+        </select>
         <select id="sdMonitor" title="What to hunt for this show" style="margin-right:8px">
           <option value="all">monitor: all episodes</option>
           <option value="future">monitor: future only</option>
           <option value="none">monitor: paused</option>
         </select>
+        <button class="btn ghost admin-only" id="sdFixMatch" style="margin-right:8px">fix match</button>
         <button class="btn" id="sdHunt">hunt missing</button>
       </div>
     </div>
@@ -319,7 +332,15 @@
     <div class="page-head">
       <button class="btn ghost" id="mdBack">← movies</button>
       <h1 id="mdTitle"></h1>
-      <div class="ph-actions"><button class="btn" id="mdSearch">search releases</button></div>
+      <div class="ph-actions">
+        <select id="mdStatus" title="Library status" class="admin-only" style="margin-right:8px">
+          <option value="monitored">status: monitored</option>
+          <option value="in_library">status: in library</option>
+          <option value="ignored">status: ignored</option>
+        </select>
+        <button class="btn ghost admin-only" id="mdFixMatch" style="margin-right:8px">fix match</button>
+        <button class="btn" id="mdSearch">search releases</button>
+      </div>
     </div>
     <div id="mdBody"></div>
   </section>
@@ -361,6 +382,21 @@
     <button class="drawer-close" id="drawerClose">×</button>
   </div>
   <div class="drawer-body" id="drawerBody"></div>
+</div>
+
+<!-- fix-match modal -->
+<div class="modal-overlay" id="fixModal">
+  <div class="modal">
+    <div class="modal-head"><h2>Fix match</h2><button class="modal-close" id="fixClose">×</button></div>
+    <div class="modal-body">
+      <p class="muted" style="margin-top:0">Search for the correct title, then pick it. The library files re-link and counts re-reconcile immediately.</p>
+      <div style="display:flex;gap:8px;margin-bottom:14px">
+        <input id="fixQuery" placeholder="Search TMDb…" style="flex:1">
+        <button class="btn" id="fixSearchBtn">search</button>
+      </div>
+      <div id="fixResults"></div>
+    </div>
+  </div>
 </div>
 
 <!-- generic form modal -->
@@ -526,6 +562,7 @@ async function openShowDetail(sid){
     $("sdTitle").textContent=d.series.title+(d.series.year?` (${d.series.year})`:"");
     $("sdCount").textContent=`${d.have}/${d.total} episodes`;
     if($("sdMonitor"))$("sdMonitor").value=d.series.monitor_mode||"all";
+    if($("sdStatus"))$("sdStatus").value=d.series.lib_status||"monitored";
     $("sdBody").innerHTML=d.seasons.map(s=>`
       <div class="season">
         <div class="season-head">Season ${s.season} <span class="muted">${s.have}/${s.total}</span></div>
@@ -551,6 +588,56 @@ $("sdHunt").addEventListener("click",async()=>{
   catch(_){toast("Hunt failed","err");}
   finally{$("sdHunt").disabled=false;$("sdHunt").textContent="hunt missing";}
 });
+$("sdStatus")&&$("sdStatus").addEventListener("change",async()=>{
+  if(!sdCurrentId)return;
+  try{await jsend(`/api/admin/show/${sdCurrentId}/status`,"POST",{status:$("sdStatus").value});
+    toast("Status updated.");}
+  catch(_){toast("Couldn't update status","err");}
+});
+$("sdFixMatch")&&$("sdFixMatch").addEventListener("click",()=>openFixMatch("show",sdCurrentId,$("sdTitle").textContent));
+
+// ── Fix Match modal (shared shows + movies) ──
+let fixKind=null,fixId=null;
+function openFixMatch(kind,id,seedTitle){
+  fixKind=kind;fixId=id;
+  $("fixQuery").value=(seedTitle||"").replace(/\s*\(\d{4}\).*/,"").trim();
+  $("fixResults").innerHTML="";
+  $("fixModal").classList.add("show");
+  runFixSearch();
+  $("fixQuery").focus();
+}
+function closeFixMatch(){$("fixModal").classList.remove("show");fixKind=fixId=null;}
+async function runFixSearch(){
+  const q=$("fixQuery").value.trim();if(!q||!fixKind)return;
+  $("fixResults").innerHTML="<div class='muted'>searching…</div>";
+  try{
+    const d=await jget(`/api/admin/match-search?kind=${fixKind}&q=${encodeURIComponent(q)}`);
+    const rows=(d.results||[]);
+    if(!rows.length){$("fixResults").innerHTML="<div class='muted'>No matches.</div>";return;}
+    $("fixResults").innerHTML=rows.map(r=>`
+      <div class="fix-row" data-tmdb="${r.tmdb_id}">
+        <img src="${r.poster?esc(r.poster):''}" onerror="this.style.visibility='hidden'">
+        <div><div class="fr-t">${esc(r.title)} ${r.year?`<span class="muted">(${r.year})</span>`:''}</div>
+          <div class="fr-o">${esc(r.overview||'')}</div></div>
+      </div>`).join("");
+    $("fixResults").querySelectorAll(".fix-row").forEach(row=>row.addEventListener("click",()=>applyFixMatch(+row.dataset.tmdb)));
+  }catch(_){$("fixResults").innerHTML="<div class='muted'>Search failed.</div>";}
+}
+async function applyFixMatch(tmdbId){
+  if(!fixKind||!fixId)return;
+  $("fixResults").innerHTML="<div class='muted'>re-linking…</div>";
+  try{
+    const r=await jsend(`/api/admin/${fixKind}/${fixId}/fixmatch`,"POST",{tmdb_id:tmdbId});
+    if(r.error){toast(r.error,"err");runFixSearch();return;}
+    toast(`Re-linked to ${r.title}.`);
+    const k=fixKind,id=fixId;closeFixMatch();
+    if(k==="show")openShowDetail(id);else openMovieDetail(id);
+  }catch(_){toast("Re-link failed","err");}
+}
+$("fixClose")&&$("fixClose").addEventListener("click",closeFixMatch);
+$("fixSearchBtn")&&$("fixSearchBtn").addEventListener("click",runFixSearch);
+$("fixQuery")&&$("fixQuery").addEventListener("keydown",e=>{if(e.key==="Enter")runFixSearch();});
+$("fixModal")&&$("fixModal").addEventListener("click",e=>{if(e.target===$("fixModal"))closeFixMatch();});
 $("showsAdd").addEventListener("click",()=>addMediaForm("show"));
 $("showsScan").addEventListener("click",()=>scanHunt("show"));
 $("showsReport").addEventListener("click",openScanReport);
@@ -601,6 +688,7 @@ async function openMovieDetail(mid){
     const d=await jget(`/api/movies/${mid}/detail`);
     const m=d.movie,f=d.file,meta=d.meta||{};
     $("mdTitle").textContent=m.title+(m.year?` (${m.year})`:"");
+    if($("mdStatus"))$("mdStatus").value=m.lib_status||"monitored";
     const fileBlock=f?`<div class="prof-card"><b>In library</b>
       <div class="prof-meta"><span class="pill have">have</span>
       ${f.quality?`<span class="tag res">${esc(f.quality)}</span>`:'<span class="muted">unknown quality</span>'}
@@ -621,6 +709,13 @@ async function openMovieDetail(mid){
   }catch(_){$("mdBody").innerHTML="<div class='empty'>Couldn't load movie.</div>";}
 }
 $("mdBack").addEventListener("click",()=>{showPage("movies");document.querySelectorAll(".navlink").forEach(l=>l.classList.toggle("on",l.dataset.page==="movies"));loadMovies();});
+$("mdStatus")&&$("mdStatus").addEventListener("change",async()=>{
+  if(!mdCurrentId)return;
+  try{await jsend(`/api/admin/movie/${mdCurrentId}/status`,"POST",{status:$("mdStatus").value});
+    toast("Status updated.");}
+  catch(_){toast("Couldn't update status","err");}
+});
+$("mdFixMatch")&&$("mdFixMatch").addEventListener("click",()=>openFixMatch("movie",mdCurrentId,$("mdTitle").textContent));
 $("mdSearch").addEventListener("click",async()=>{
   if(!mdCurrentId)return;$("mdSearch").disabled=true;$("mdSearch").textContent="searching…";
   try{

@@ -888,3 +888,35 @@ def test_clean_for_search():
     assert _clean_for_search("Silicon Valley (2014)") == ("Silicon Valley", 2014)
     assert _clean_for_search("Stranger Things [1080p]") == ("Stranger Things", None)
     assert _clean_for_search("Ted (2024) [720p]") == ("Ted", 2024)
+
+
+def test_fixmatch_status_and_relink(monkeypatch, tmp_path):
+    monkeypatch.setenv("EVENTS_FILE", str(tmp_path / "ev.jsonl"))
+    import importlib
+    from faucet import config as cfgmod
+    importlib.reload(cfgmod)
+    from faucet import db
+    importlib.reload(db)
+    db.init()
+    from faucet import fixmatch as F
+    importlib.reload(F)
+    with db.connect() as c:
+        sid = c.execute("INSERT INTO series (tmdb_id,title,year,monitored,lib_status) "
+                        "VALUES (999,'Wrong',2020,1,'monitored')").lastrowid
+        mid = c.execute("INSERT INTO movies (tmdb_id,title,year,monitored,lib_status) "
+                        "VALUES (888,'Wrong',2019,1,'monitored')").lastrowid
+    # status: ignored zeroes the monitored flag
+    assert F.set_status("show", sid, "ignored")["status"] == "ignored"
+    with db.connect() as c:
+        r = c.execute("SELECT lib_status,monitored FROM series WHERE id=?", (sid,)).fetchone()
+    assert r["lib_status"] == "ignored" and r["monitored"] == 0
+    assert "error" in F.set_status("show", sid, "bogus")
+    # fix movie match re-links + resets to monitored
+    monkeypatch.setattr(F.tmdb, "details",
+                        lambda tid, k: {"title": "Right", "year": 2021, "poster": "/p", "seasons": 1})
+    monkeypatch.setattr(F.movies_mod, "reconcile", lambda m: {"have": 1})
+    res = F._fix_movie(mid, 24)
+    assert res["ok"] and res["title"] == "Right"
+    with db.connect() as c:
+        r = c.execute("SELECT tmdb_id,lib_status FROM movies WHERE id=?", (mid,)).fetchone()
+    assert r["tmdb_id"] == 24 and r["lib_status"] == "monitored"

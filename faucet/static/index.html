@@ -343,7 +343,9 @@
           <option value="future">monitor: future only</option>
           <option value="none">monitor: paused</option>
         </select>
+        <select id="sdProfile" title="Quality profile" class="admin-only" style="margin-right:8px"></select>
         <button class="btn ghost admin-only" id="sdFixMatch" style="margin-right:8px">fix match</button>
+        <button class="btn ghost admin-only" id="sdFixLoc" style="margin-right:8px">fix location</button>
         <button class="btn" id="sdHunt">hunt missing</button>
       </div>
     </div>
@@ -361,7 +363,9 @@
           <option value="in_library">status: in library</option>
           <option value="ignored">status: ignored</option>
         </select>
+        <select id="mdProfile" title="Quality profile" class="admin-only" style="margin-right:8px"></select>
         <button class="btn ghost admin-only" id="mdFixMatch" style="margin-right:8px">fix match</button>
+        <button class="btn ghost admin-only" id="mdFixLoc" style="margin-right:8px">fix location</button>
         <button class="btn" id="mdSearch">search releases</button>
       </div>
     </div>
@@ -598,12 +602,14 @@ async function openShowDetail(sid){
   sdCurrentId=sid;showPage("showdetail");
   document.querySelectorAll(".navlink").forEach(l=>l.classList.toggle("on",l.dataset.page==="shows"));
   $("sdBody").innerHTML="<div class='muted'>loading…</div>";$("sdTitle").textContent="";$("sdCount").textContent="";
+  if(ME&&ME.role==="admin"&&!profilesCache.length){try{profilesCache=await jget("/api/profiles").then(d=>d.profiles||[]);}catch(_){}}
   try{
     const d=await jget(`/api/series/${sid}/episodes`);
     $("sdTitle").textContent=d.series.title+(d.series.year?` (${d.series.year})`:"");
     $("sdCount").textContent=`${d.have}/${d.total} episodes`;
     if($("sdMonitor"))$("sdMonitor").value=d.series.monitor_mode||"all";
     if($("sdStatus"))$("sdStatus").value=d.series.lib_status||"monitored";
+    fillProfileSelect($("sdProfile"),d.series.profile_id);
     $("sdBody").innerHTML=d.seasons.map(s=>`
       <div class="season">
         <div class="season-head">Season ${s.season} <span class="muted">${s.have}/${s.total}</span></div>
@@ -635,7 +641,20 @@ $("sdStatus")&&$("sdStatus").addEventListener("change",async()=>{
     toast("Status updated.");}
   catch(_){toast("Couldn't update status","err");}
 });
+// shared: fill a <select> with the profile list + select current
+function fillProfileSelect(sel,current){
+  if(!sel)return;
+  sel.innerHTML=`<option value="">profile: default</option>`+
+    profilesCache.map(p=>`<option value="${p.id}" ${p.id===current?'selected':''}>profile: ${esc(p.name)}</option>`).join("");
+}
+$("sdProfile")&&$("sdProfile").addEventListener("change",async()=>{
+  if(!sdCurrentId)return;
+  try{await jsend(`/api/series/${sdCurrentId}/profile?profile_id=${$("sdProfile").value||0}`,"POST");
+    toast("Profile updated.");}
+  catch(_){toast("Couldn't update profile","err");}
+});
 $("sdFixMatch")&&$("sdFixMatch").addEventListener("click",()=>openFixMatch("show",sdCurrentId,$("sdTitle").textContent));
+$("sdFixLoc")&&$("sdFixLoc").addEventListener("click",()=>openFileBrowser(""));
 
 // ── Fix Match modal (shared shows + movies) ──
 let fixKind=null,fixId=null;
@@ -781,11 +800,13 @@ async function openMovieDetail(mid){
   mdCurrentId=mid;showPage("moviedetail");
   document.querySelectorAll(".navlink").forEach(l=>l.classList.toggle("on",l.dataset.page==="movies"));
   $("mdBody").innerHTML="<div class='muted'>loading…</div>";$("mdTitle").textContent="";
+  if(ME&&ME.role==="admin"&&!profilesCache.length){try{profilesCache=await jget("/api/profiles").then(d=>d.profiles||[]);}catch(_){}}
   try{
     const d=await jget(`/api/movies/${mid}/detail`);
     const m=d.movie,f=d.file,meta=d.meta||{};
     $("mdTitle").textContent=m.title+(m.year?` (${m.year})`:"");
     if($("mdStatus"))$("mdStatus").value=m.lib_status||"monitored";
+    fillProfileSelect($("mdProfile"),m.profile_id);
     const fileBlock=f?`<div class="prof-card"><b>In library</b>
       <div class="prof-meta"><span class="pill have">have</span>
       ${f.quality?`<span class="tag res">${esc(f.quality)}</span>`:'<span class="muted">unknown quality</span>'}
@@ -816,6 +837,13 @@ $("mdStatus")&&$("mdStatus").addEventListener("change",async()=>{
   catch(_){toast("Couldn't update status","err");}
 });
 $("mdFixMatch")&&$("mdFixMatch").addEventListener("click",()=>openFixMatch("movie",mdCurrentId,$("mdTitle").textContent));
+$("mdProfile")&&$("mdProfile").addEventListener("change",async()=>{
+  if(!mdCurrentId)return;
+  try{await jsend(`/api/movies/${mdCurrentId}/profile?profile_id=${$("mdProfile").value||0}`,"POST");
+    toast("Profile updated.");}
+  catch(_){toast("Couldn't update profile","err");}
+});
+$("mdFixLoc")&&$("mdFixLoc").addEventListener("click",()=>openFileBrowser(""));
 $("mdSearch").addEventListener("click",async()=>{
   if(!mdCurrentId)return;$("mdSearch").disabled=true;$("mdSearch").textContent="searching…";
   try{
@@ -1013,6 +1041,7 @@ async function refreshDock(){
 
 // ============ settings (modal) ============
 $("settingsBtn").addEventListener("click",async()=>{
+  if(ME&&ME.role==="admin"&&!profilesCache.length){try{profilesCache=await jget("/api/profiles").then(d=>d.profiles||[]);}catch(_){}}
   const s=await jget("/api/settings");const env=s.env||{};
   openModal("Settings",`
     <label class="fld">TMDb API key ${s.tmdb_enabled?'<span style="color:var(--good)">● enabled</span>':'<span class="muted">○ disabled</span>'}</label>
@@ -1022,12 +1051,14 @@ $("settingsBtn").addEventListener("click",async()=>{
     <label class="fld">Notifications (comma-separated URLs)</label><input type="text" id="st_notify" value="${esc(env.NOTIFY_URLS||'')}" style="width:100%">
     <label class="fld">Default preferred language <span class="muted">(applies when a show/movie has no profile)</span></label>
     <select id="st_lang" style="width:100%">${[["en","English"],["any","Any language"],["es","Spanish"],["fr","French"],["de","German"],["it","Italian"],["ru","Russian"],["ja","Japanese"],["ko","Korean"],["zh","Chinese"],["pt","Portuguese"],["hi","Hindi"],["nl","Dutch"]].map(([v,n])=>`<option value="${v}" ${(s.db&&s.db.default_language||'en')===v?'selected':''}>${n}</option>`).join('')}</select>
+    <label class="fld">Default quality profile <span class="muted">(applied to shows/movies with no profile of their own)</span></label>
+    <select id="st_defprof" style="width:100%"><option value="">none (best-seeded)</option>${(profilesCache||[]).map(p=>`<option value="${p.id}" ${String(s.db&&s.db.default_profile_id||'')===String(p.id)?'selected':''}>${esc(p.name)}</option>`).join('')}</select>
     <div class="row2"><div><label class="fld">Theme</label><select id="st_theme" style="width:100%">${['dark','light','auto'].map(t=>`<option ${env.UI_THEME===t?'selected':''}>${t}</option>`).join('')}</select></div>
     <div><label class="fld">Accent</label><select id="st_accent" style="width:100%">${['blue','green','purple','amber','rose'].map(a=>`<option ${env.UI_ACCENT===a?'selected':''}>${a}</option>`).join('')}</select></div></div>
     <div style="margin-top:16px"><button class="btn" id="st_save">save changes</button></div>`);
   $("st_save").addEventListener("click",async()=>{
     await jsend("/api/settings","PATCH",{values:{tmdb_key:$("st_tmdb").value.trim(),JACKETT_URL:$("st_jurl").value.trim(),
-      REMOVE_ON_COMPLETE:$("st_rem").value,NOTIFY_URLS:$("st_notify").value.trim(),UI_THEME:$("st_theme").value,UI_ACCENT:$("st_accent").value,default_language:$("st_lang").value}});
+      REMOVE_ON_COMPLETE:$("st_rem").value,NOTIFY_URLS:$("st_notify").value.trim(),UI_THEME:$("st_theme").value,UI_ACCENT:$("st_accent").value,default_language:$("st_lang").value,default_profile_id:$("st_defprof").value||""}});
     toast("Settings saved.");closeModal();refreshMeta();});
 });
 

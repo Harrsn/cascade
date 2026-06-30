@@ -168,6 +168,7 @@
   .dxfer-rate{font-family:var(--mono);font-size:11px;color:var(--muted);white-space:nowrap;}
   .dxfer-bar{height:4px;background:var(--line-hi);border-radius:3px;overflow:hidden;}
   .dxfer-bar i{display:block;height:100%;background:var(--accent);transition:width .5s;}
+  .dxfer-sub{font-family:var(--mono);font-size:10.5px;margin-top:5px;}
   /* recent */
   .drecent-head{font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:10px;}
   .drecent-row{display:flex;align-items:center;gap:10px;padding:5px 0;font-size:13px;}
@@ -333,6 +334,7 @@
   .xfer .xbar{height:5px;background:var(--line);border-radius:3px;overflow:hidden;margin:4px 0;}
   .xfer .xbar i{display:block;height:100%;background:var(--accent);}
   .xfer .xmeta{color:var(--muted);display:flex;gap:10px;flex-wrap:wrap;}
+  .xfer .xsize{color:var(--muted);font-family:var(--mono);font-size:10.5px;margin-top:4px;}
   .xfer .xact{margin-top:5px;display:flex;gap:8px;}
   .hist-row{display:flex;gap:10px;padding:7px 0;border-bottom:1px solid var(--line);font-size:12px;align-items:baseline;}
   .hist-row .ht{color:var(--muted);font-size:10px;white-space:nowrap;}
@@ -819,6 +821,7 @@ async function loadDashboard(){
         <div class="dxfer-top"><span class="dxfer-name">${esc(a.name)}</span>
           <span class="dxfer-rate">${a.percent}% · ${esc(a.down_h)}${a.eta>0?' · '+etaH(a.eta)+' left':''}</span></div>
         <div class="dxfer-bar"><i style="width:${a.percent}%"></i></div>
+        <div class="dxfer-sub muted">${esc(human(a.size*a.percent/100))} of ${esc(a.size_h)}</div>
       </div>`).join("")+`</div>`;
   }else{
     html+=`<div class="dcard dempty">${tr.client_ok?'Nothing downloading right now.':'Download client offline — transfers unavailable.'}</div>`;
@@ -835,8 +838,8 @@ async function loadDashboard(){
   const epPct=lib.episodes_total?Math.round(lib.episodes_have/lib.episodes_total*100):0;
   html+=`<div class="dsection-label">Library</div>
   <div class="dstat-row">
-    ${dashStat("Shows",lib.shows||0)}
-    ${dashStat("Movies",lib.movies||0)}
+    ${dashStat("Shows",lib.shows||0,"monitored")}
+    ${dashStat("Movies",lib.movies||0,`${lib.movies_have||0} on disk`)}
     ${dashStat("Episodes",`${lib.episodes_have||0}<span class="muted" style="font-size:14px">/${lib.episodes_total||0}</span>`,`${epPct}% complete`)}
     ${dashStat("Wanted",lib.wanted||0,'missing',(lib.wanted?'warn':'good'))}
   </div>`;
@@ -1337,6 +1340,7 @@ async function refreshDock(){
       $("drawerBody").innerHTML=xs.length?xs.map(x=>{const pct=Math.round(x.percent||0);
         return `<div class="xfer"><div class="xt">${esc(x.name)}</div><div class="xbar"><i style="width:${pct}%"></i></div>
           <div class="xmeta"><span>${pct}%</span><span>${esc(x.status||'')}</span><span>↓${esc(x.down_h||'0/s')}</span></div>
+          ${x.size?`<div class="xsize">${esc(human(x.size*(x.percent||0)/100))} of ${esc(x.size_h)}</div>`:''}
           <div class="xact"><button class="link-btn" data-pause="${x.id}">${x.status==='downloading'?'pause':'resume'}</button>
           <button class="link-btn danger" data-rm="${x.id}">remove</button></div></div>`;}).join(""):"<div class='empty'>No active transfers.</div>";
       $("drawerBody").querySelectorAll("[data-rm]").forEach(b=>b.addEventListener("click",async()=>{await jsend(`/api/torrent/${b.dataset.rm}`,"POST",{action:"remove"});refreshDock();}));
@@ -1554,7 +1558,7 @@ function applyRoleUI(){
 
 async function navRequests(){
   document.querySelectorAll(".navlink").forEach(l=>l.classList.toggle("on",l.dataset.page==="requests"));
-  ["search","shows","movies","subs","profiles","showdetail","moviedetail"].forEach(p=>{const el=$("page-"+p);if(el)el.classList.remove("on");});
+  ["dashboard","search","shows","movies","subs","profiles","showdetail","moviedetail"].forEach(p=>{const el=$("page-"+p);if(el)el.classList.remove("on");});
   let host=$("page-requests");
   if(!host){ host=document.createElement("section"); host.className="page"; host.id="page-requests";
     document.querySelector(".wrap").appendChild(host); }
@@ -1707,7 +1711,7 @@ function startAdminPolling(){
     else jget("/api/dashboard").then(d=>{const dl=(d.transfers&&d.transfers.downloading)||0;
       if($("activeCount")){$("activeCount").textContent=dl;$("activeCount").className="badge"+(dl?"":" zero");}}).catch(()=>{}); };
   tick();
-  if(!window._statsTimer) window._statsTimer=setInterval(tick,8000);
+  if(!window._statsTimer) window._statsTimer=setInterval(tick,3000);
 }
 </script>
 </body>

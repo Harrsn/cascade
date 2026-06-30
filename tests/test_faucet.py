@@ -862,3 +862,29 @@ def test_season_from_path_helper():
     assert _season_from_path(Path("Show/S01/ep.mkv").parent) == 1
     assert _season_from_path(Path("Show/Specials/ep.mkv").parent) == 0
     assert _season_from_path(Path("Show/ep.mkv").parent) is None
+
+
+def test_import_matches_year_suffixed_folder(monkeypatch, tmp_path):
+    """A folder named 'Show (2014)' must search TMDb as 'Show' (not the
+    parenthesized form, which TMDb won't match) and use the year as a filter."""
+    monkeypatch.setenv("EVENTS_FILE", str(tmp_path / "ev.jsonl"))
+    import importlib
+    from faucet import importer as I
+    importlib.reload(I)
+    calls = []
+
+    def fake_search(q, kind):
+        calls.append(q)
+        return [{"tmdb_id": 1431, "title": "Silicon Valley", "year": 2014, "poster": None}] \
+            if q == "Silicon Valley" else []
+    monkeypatch.setattr(I.tmdb, "search", fake_search)
+    m = I._best_tmdb_match("Silicon Valley (2014)", "tv")
+    assert calls == ["Silicon Valley"]          # clean query, no (2014)
+    assert m and m["tmdb_id"] == 1431
+
+
+def test_clean_for_search():
+    from faucet.importer import _clean_for_search
+    assert _clean_for_search("Silicon Valley (2014)") == ("Silicon Valley", 2014)
+    assert _clean_for_search("Stranger Things [1080p]") == ("Stranger Things", None)
+    assert _clean_for_search("Ted (2024) [720p]") == ("Ted", 2024)

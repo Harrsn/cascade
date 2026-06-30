@@ -51,10 +51,29 @@ def _already_have_movie(title: str, year) -> bool:
     return False
 
 
+def _clean_for_search(name: str):
+    """Turn a library folder name into a clean TMDb search query + extracted
+    year. 'Silicon Valley (2014)' -> ('Silicon Valley', 2014);
+    'Stranger Things [1080p]' -> ('Stranger Things', None). Keeps the readable
+    title (unlike normalize_title, which lowercases and strips punctuation)."""
+    import re
+    year = None
+    m = re.search(r"\((19|20)\d{2}\)", name or "")
+    if m:
+        year = int(m.group(0).strip("()"))
+    q = re.sub(r"\[[^\]]*\]", " ", name or "")     # drop [1080p] etc.
+    q = re.sub(r"\((19|20)\d{2}\)", " ", q)         # drop (YEAR)
+    q = " ".join(q.split()).strip()
+    return q, year
+
+
 def _best_tmdb_match(name: str, kind: str, year=None) -> dict | None:
     """Search TMDb and return the result whose normalized title matches the
-    folder name. kind: 'tv' | 'movie'."""
-    results = tmdb.search(name, kind)
+    folder name. kind: 'tv' | 'movie'. Searches with a cleaned query (year and
+    bracket tags removed) since TMDb doesn't match 'Show (2014)' well."""
+    query, folder_year = _clean_for_search(name)
+    year = year or folder_year
+    results = tmdb.search(query or name, kind)
     key = library.normalize_title(name)
     # exact normalized match first
     for r in results:
@@ -62,6 +81,11 @@ def _best_tmdb_match(name: str, kind: str, year=None) -> dict | None:
             if year and r.get("year") and abs(int(r["year"]) - int(year)) > 1:
                 continue
             return r
+    # year-aware fallback: if we have a year, prefer a result that matches it
+    if year:
+        for r in results:
+            if r.get("year") and abs(int(r["year"]) - int(year)) <= 1:
+                return r
     # else take the top result if there's any (TMDb ranks by relevance)
     return results[0] if results else None
 

@@ -830,3 +830,35 @@ def test_cleanup_release_dir(tmp_path):
     S._cleanup_release_dir(d2)
     assert d2.exists()
     logging.disable(logging.NOTSET)
+
+
+def test_season_from_folder(tmp_path, monkeypatch):
+    """Episodes that carry only an episode number in the filename get their
+    season from a 'Season NN' parent folder (Sonarr-style layout)."""
+    monkeypatch.setenv("EVENTS_FILE", str(tmp_path / "events.jsonl"))
+    monkeypatch.setenv("LIBRARY_ROOT", str(tmp_path / "lib"))
+    sv = tmp_path / "lib" / "tvshows" / "Silicon Valley (2014)" / "Season 01"
+    sv.mkdir(parents=True)
+    (sv / "Episode 01.mkv").write_bytes(b"x" * (60 * 1024 * 1024))
+    (sv / "Episode 02.mkv").write_bytes(b"x" * (60 * 1024 * 1024))
+    import importlib
+    from faucet import config as cfgmod
+    importlib.reload(cfgmod)
+    from faucet import db
+    importlib.reload(db)
+    db.init()
+    from faucet import library as L
+    importlib.reload(L)
+    s = L.scan()
+    assert s["episodes"] == 2
+    assert L.have_episode("Silicon Valley", 1, 1)
+    assert L.have_episode("Silicon Valley", 1, 2)
+
+
+def test_season_from_path_helper():
+    from faucet.library import _season_from_path
+    from pathlib import Path
+    assert _season_from_path(Path("Show/Season 03/ep.mkv").parent) == 3
+    assert _season_from_path(Path("Show/S01/ep.mkv").parent) == 1
+    assert _season_from_path(Path("Show/Specials/ep.mkv").parent) == 0
+    assert _season_from_path(Path("Show/ep.mkv").parent) is None

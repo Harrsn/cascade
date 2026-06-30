@@ -43,6 +43,24 @@ def _clean_episode_filename(name: str) -> str:
     return re.sub(r"(?i)(s\d{1,2}e\d{1,3})[a-d]{1,3}(?=\b|[ ._\-+])", r"\1", name)
 
 
+def _season_from_path(rel) -> int | None:
+    """Pull a season number from a 'Season NN' / 'Season N' / 'S01' parent
+    folder in the relative path. Returns None if none of the parts look like a
+    season folder. 'Specials' -> 0."""
+    import re
+    for part in rel.parts:
+        p = part.strip().lower()
+        if p in ("specials", "special"):
+            return 0
+        m = re.match(r"^season\s*0*(\d{1,2})$", p)
+        if m:
+            return int(m.group(1))
+        m = re.match(r"^s0*(\d{1,2})$", p)
+        if m:
+            return int(m.group(1))
+    return None
+
+
 def _regex_episode(name: str):
     """Last-resort season/episode extraction when guessit fails, covering
     SxxExx, SxxExxExx (multi-ep), and Nx NN forms. Returns (season, episode)
@@ -139,6 +157,11 @@ def _scan_tv(root: Path, stats: dict, force: bool = False) -> None:
                 season = rs
             if episode is None:
                 episode = re_
+        # If the filename gave an episode but no season, derive the season from a
+        # 'Season NN' / 'S01' parent folder (Sonarr-style layouts put the season
+        # in the folder and sometimes only the episode in the file).
+        if season is None and episode is not None:
+            season = _season_from_path(rel)
         if not show or season is None or episode is None:
             stats["unparsed"] += 1
             why = "no show name" if not show else "no season/episode number"

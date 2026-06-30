@@ -9,6 +9,7 @@ from __future__ import annotations
 import os
 import json
 import shutil
+import sqlite3
 import logging
 from pathlib import Path
 
@@ -284,6 +285,92 @@ def api_stats():
         pass
     out["down_total_h"] = searchmod.human_size(out["down_total"]) + "/s"
     out["up_total_h"] = searchmod.human_size(out["up_total"]) + "/s"
+    return out
+
+
+@app.get("/api/dashboard")
+def api_dashboard():
+    """Consolidated admin overview: storage, live activity, library health,
+    requests and users. One call so the dashboard isn't a waterfall of fetches."""
+    out: dict = {}
+
+    # ── storage ──
+    disk = None
+    try:
+        du = shutil.disk_usage(cfg().disk_path)
+        disk = {"free": du.free, "used": du.used, "total": du.total,
+                "free_h": searchmod.human_size(du.free),
+                "used_h": searchmod.human_size(du.used),
+                "total_h": searchmod.human_size(du.total),
+                "pct_used": round(du.used / du.total * 100, 1) if du.total else 0}
+    except OSError:
+        pass
+    out["disk"] = disk
+
+    # ── live activity (current transfers) ──
+    active = []
+    down_total = up_total = downloading = seeding = 0
+    client_ok = True
+    try:
+        for t in client().list_transfers():
+            down_total += t.down_rate
+            up_total += t.up_rate
+            if t.status == "downloading":
+                downloading += 1
+            elif t.status == "seeding":
+                seeding += 1
+            if t.status in ("downloading", "checking", "queued") or (0 < t.percent < 100):
+                active.append({
+                    "name": t.name, "percent": round(t.percent, 1),
+                    "down_rate": t.down_rate, "up_rate": t.up_rate,
+                    "down_h": searchmod.human_size(t.down_rate) + "/s",
+                    "status": t.status, "eta": t.eta, "size": t.size,
+                    "size_h": searchmod.human_size(t.size),
+                })
+    except DownloadClientError:
+        client_ok = False
+    active.sort(key=lambda a: a["down_rate"], reverse=True)
+    out["transfers"] = {
+        "active": active[:8], "active_count": len(active),
+        "downloading": downloading, "seeding": seeding,
+        "down_h": searchmod.human_size(down_total) + "/s",
+        "up_h": searchmod.human_size(up_total) + "/s",
+        "client_ok": client_ok,
+    }
+
+    # ── library health + requests + users + recent history (one db pass) ──
+    with db.connect() as c:
+        def scalar(q, *a):
+            row = c.execute(q, a).fetchone()
+            return (row[0] if row else 0) or 0
+        out["library"] = {
+            "shows": scalar("SELECT COUNT(*) FROM series"),
+            "movies": scalar("SELECT COUNT(*) FROM movies"),
+            "episodes_have": scalar("SELECT COUNT(*) FROM library_episodes WHERE series_id IS NOT NULL"),
+            "episodes_total": scalar("SELECT COUNT(*) FROM series_episodes"),
+            "movies_have": scalar("SELECT COUNT(*) FROM movies WHERE status='have'"),
+            "wanted": scalar("SELECT COUNT(*) FROM wanted WHERE status='wanted'"),
+        }
+        out["requests"] = {
+            "pending": scalar("SELECT COUNT(*) FROM requests WHERE status='pending'"),
+            "total": scalar("SELECT COUNT(*) FROM requests"),
+        }
+        out["users"] = {
+            "total": scalar("SELECT COUNT(*) FROM users"),
+            "active": scalar("SELECT COUNT(*) FROM users WHERE status='active'"),
+            "pending": scalar("SELECT COUNT(*) FROM users WHERE status='pending'"),
+            "admins": scalar("SELECT COUNT(*) FROM users WHERE role='admin'"),
+        }
+        try:
+            hist = c.execute(
+                "SELECT ts, event, title, size FROM history "
+                "ORDER BY id DESC LIMIT 8").fetchall()
+            out["recent"] = [{"ts": r["ts"], "event": r["event"],
+                              "title": r["title"],
+                              "size_h": searchmod.human_size(r["size"] or 0)}
+                             for r in hist]
+        except sqlite3.Error:
+            out["recent"] = []
     return out
 
 

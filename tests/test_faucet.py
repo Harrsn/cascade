@@ -1061,3 +1061,32 @@ def test_link_movie_file(tmp_path, monkeypatch):
     assert lm and lm["path"].endswith("Hey Watch This.avi")
     # escape still blocked
     assert FB.resolve_abs("../../etc/passwd") is None
+
+
+def test_dashboard_endpoint(tmp_path, monkeypatch):
+    """Dashboard endpoint returns the consolidated overview structure."""
+    monkeypatch.setenv("EVENTS_FILE", str(tmp_path / "ev.jsonl"))
+    monkeypatch.setenv("SESSION_SECRET", "test")
+    monkeypatch.setenv("DB_PATH", str(tmp_path / "f.db"))
+    monkeypatch.setenv("JACKETT_API_KEY", "test")
+    import importlib
+    from faucet import config as cfgmod
+    importlib.reload(cfgmod)
+    from faucet import db
+    importlib.reload(db)
+    db.init()
+    with db.connect() as c:
+        c.execute("INSERT INTO series (tmdb_id,title,monitored) VALUES (1,'X',1)")
+        c.execute("INSERT INTO movies (tmdb_id,title,status,monitored) VALUES (1,'Y','have',1)")
+    from faucet import auth
+    importlib.reload(auth)
+    from faucet import app as appmod
+    importlib.reload(appmod)
+    from fastapi.testclient import TestClient
+    cl = TestClient(appmod.app, follow_redirects=False)
+    cl.post("/api/auth/register", json={"username": "admin", "password": "supersecret123"})
+    cl.post("/api/auth/login", json={"username": "admin", "password": "supersecret123"})
+    d = cl.get("/api/dashboard").json()
+    assert d["library"]["shows"] == 1 and d["library"]["movies"] == 1
+    assert "transfers" in d and "users" in d and "requests" in d
+    assert d["users"]["total"] == 1 and d["users"]["admins"] == 1

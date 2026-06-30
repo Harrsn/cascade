@@ -154,7 +154,7 @@ All via environment / `.env`:
 
 Most connection, path, behavior, and metadata settings can also be edited live from the in-app **Settings** panel (they persist to a config file that overrides the environment and survives restarts). The **TMDb API key**, default language, and default profile are stored in the database and set in-app. Full list and notification URL formats are in [.env.example](.env.example).
 
-## Library tidy & cleanup tools
+## Library tidy
 
 Normalize existing season folders to `Season NN` and merge scattered duplicates:
 
@@ -162,16 +162,6 @@ Normalize existing season folders to `Season NN` and merge scattered duplicates:
 python -m faucet.libtidy                 # dry-run, shows the plan
 python -m faucet.libtidy --tv --apply    # execute TV renames
 ```
-
-Strip junk files (`.nfo`, sample/trailer clips, tracker `.txt`s, stray artwork) from a library — **dry-run by default**, with hard guards that never touch real video/subtitle/audio files:
-
-```bash
-python scripts/clean_library.py /path/to/tv /path/to/movies          # preview only
-python scripts/clean_library.py --trash /path/to/_quarantine ...     # reversible
-python scripts/clean_library.py --delete ...                         # after review
-```
-
-See `--help` for per-category toggles (`--no-nfo`, `--no-samples`, `--no-junk`, `--no-artwork`) and `--prune-empty`.
 
 ## How it compares
 

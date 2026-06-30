@@ -56,7 +56,7 @@
     font-weight:600;margin-left:5px;}
   .navbtn .badge.zero{display:none;}
 
-  .wrap{max-width:1180px;margin:0 auto;padding:30px 22px 90px;}
+  .wrap{max-width:1600px;margin:0 auto;padding:30px 34px 90px;}
   .page{display:none;} .page.on{display:block;animation:fadein .35s ease;}
   @keyframes fadein{from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:none;}}
   .page-head{display:flex;align-items:center;gap:14px;margin-bottom:22px;}
@@ -138,7 +138,7 @@
   .poster .py{font-size:11px;color:var(--muted);margin-top:2px;}
 
   /* library/movie cards — wide cinematic "filmstrip" rows */
-  .cardgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(540px,1fr));gap:14px;}
+  .cardgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(380px,1fr));gap:14px;}
   .lcard{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:16px 18px;
     display:flex;gap:18px;align-items:center;position:relative;overflow:hidden;
     transition:border-color .18s,transform .18s,box-shadow .18s;}
@@ -173,6 +173,33 @@
   .lnk{color:var(--accent);cursor:pointer;margin-left:10px;font-size:12px;}
   .lnk:hover{text-decoration:underline;}
   .lnk.danger{color:var(--bad);}
+  /* requests */
+  .reqsection-label{font-family:var(--mono);font-size:11px;text-transform:uppercase;letter-spacing:.08em;
+    color:var(--muted);margin:20px 0 10px;}
+  .reqcard{display:flex;align-items:center;gap:14px;background:var(--panel);border:1px solid var(--line);
+    border-radius:var(--radius);padding:12px 16px;margin-bottom:10px;transition:border-color .15s;}
+  .reqcard:hover{border-color:var(--line-hi);}
+  .reqart{width:46px;height:69px;border-radius:6px;flex-shrink:0;background:var(--panel2) center/cover no-repeat;
+    display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:13px;
+    box-shadow:0 2px 8px -3px rgba(0,0,0,.5);}
+  .reqbody{flex:1;min-width:0;}
+  .reqtitle{font-family:var(--disp);font-weight:600;font-size:16px;letter-spacing:-0.01em;}
+  .reqsub{display:flex;align-items:center;gap:8px;margin-top:4px;font-size:12px;}
+  .reqacts{display:flex;align-items:center;gap:10px;flex-shrink:0;}
+  .btn.sm{padding:5px 12px;font-size:12px;}
+  /* user cards */
+  .usercard{display:flex;align-items:center;gap:14px;background:var(--panel2);border:1px solid var(--line);
+    border-radius:10px;padding:12px 14px;margin-bottom:9px;}
+  .useravatar{width:42px;height:42px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;
+    justify-content:center;font-family:var(--disp);font-weight:600;font-size:15px;background:var(--panel);
+    border:1.5px solid var(--line-hi);color:var(--txt);}
+  .userinfo{flex:1;min-width:0;}
+  .username{font-family:var(--disp);font-weight:600;font-size:15px;display:flex;align-items:center;gap:8px;}
+  .youtag{font-family:var(--mono);font-size:9px;text-transform:uppercase;letter-spacing:.06em;color:var(--accent);
+    border:1px solid color-mix(in srgb,var(--accent) 40%,transparent);border-radius:8px;padding:1px 6px;}
+  .usermeta{display:flex;align-items:center;gap:9px;margin-top:5px;}
+  .trustbadge{font-family:var(--mono);font-size:10px;color:var(--accent);}
+  .useracts{display:flex;flex-wrap:wrap;gap:12px;justify-content:flex-end;flex-shrink:0;max-width:50%;}
   /* regular (non-admin) users: hide destructive/management controls */
   body.role-user .remove,body.role-user [data-act="remove"],body.role-user .huntbtn{display:none !important;}
   body.role-user .admin-only{display:none !important;}
@@ -183,27 +210,27 @@
   .fix-row .fr-t{font-weight:600;}
   .fix-row .fr-o{font-size:12px;color:var(--muted);margin-top:3px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
   /* terminal file browser */
-  .fb-term{font-family:ui-monospace,'SF Mono',Menlo,Consolas,monospace;font-size:13px;background:#0a0e14;color:#c5d1de;}
-  .fb-bar{display:flex;align-items:center;gap:8px;padding:10px 14px;border-bottom:1px solid #1b2430;background:#0d1219;}
-  .fb-bar .fb-up{background:#1b2430;border:none;color:#8fa6c0;padding:3px 10px;border-radius:5px;cursor:pointer;font-family:inherit;}
-  .fb-bar .fb-up:hover{background:#26344a;}
+  .fb-term{font-family:var(--mono);font-size:13px;background:var(--bg);color:var(--txt);border-radius:var(--radius);overflow:hidden;}
+  .fb-bar{display:flex;align-items:center;gap:8px;padding:10px 14px;border-bottom:1px solid var(--line);background:var(--panel2);}
+  .fb-bar .fb-up{background:var(--panel);border:1px solid var(--line-hi);color:var(--muted);padding:3px 10px;border-radius:6px;cursor:pointer;font-family:inherit;}
+  .fb-bar .fb-up:hover{border-color:var(--accent);color:var(--txt);}
   .fb-bar .fb-up:disabled{opacity:.4;cursor:default;}
-  .fb-path{flex:1;color:#5fb3ff;overflow-x:auto;white-space:nowrap;}
-  .fb-mk{background:none;border:1px solid #2a3a52;color:#8fa6c0;padding:3px 10px;border-radius:5px;cursor:pointer;font-family:inherit;}
-  .fb-mk:hover{border-color:#5fb3ff;color:#5fb3ff;}
+  .fb-path{flex:1;color:var(--accent);overflow-x:auto;white-space:nowrap;}
+  .fb-mk{background:none;border:1px solid var(--line-hi);color:var(--muted);padding:3px 10px;border-radius:6px;cursor:pointer;font-family:inherit;}
+  .fb-mk:hover{border-color:var(--accent);color:var(--accent);}
   .fb-list{max-height:50vh;overflow-y:auto;padding:6px 0;}
-  .fb-row{display:flex;align-items:center;gap:10px;padding:5px 14px;cursor:pointer;}
-  .fb-row:hover{background:#141b26;}
+  .fb-row{display:flex;align-items:center;gap:10px;padding:6px 14px;cursor:pointer;}
+  .fb-row:hover{background:var(--panel2);}
   .fb-row .ic{width:16px;text-align:center;}
   .fb-row .nm{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-  .fb-row.dir .nm{color:#7fd0ff;}
-  .fb-row.video .nm{color:#a3e3a3;}
-  .fb-row .sz{color:#5a6b80;font-size:11px;}
-  .fb-row .pick{background:#1b3a5f;border:none;color:#9fd0ff;padding:2px 9px;border-radius:4px;cursor:pointer;font-family:inherit;font-size:11px;opacity:0;}
+  .fb-row.dir .nm{color:var(--link);}
+  .fb-row.video .nm{color:var(--good);}
+  .fb-row .sz{color:var(--muted);font-size:11px;}
+  .fb-row .pick{background:var(--accent);border:none;color:#13110B;padding:3px 10px;border-radius:5px;cursor:pointer;font-family:inherit;font-size:11px;font-weight:600;opacity:0;}
   .fb-row:hover .pick{opacity:1;}
-  .fb-row .pick:hover{background:#2a5285;}
-  .fb-foot{padding:8px 14px;border-top:1px solid #1b2430;background:#0d1219;color:#7a8aa0;font-size:11px;min-height:18px;}
-  .fb-foot.armed{color:#ffcf6b;}
+  .fb-row .pick:hover{background:var(--accent-soft);}
+  .fb-foot{padding:9px 14px;border-top:1px solid var(--line);background:var(--panel2);color:var(--muted);font-size:11px;min-height:18px;}
+  .fb-foot.armed{color:var(--accent);}
   .reqcard{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px 14px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;gap:12px;}
   .reqacts{display:flex;gap:6px;flex-shrink:0;}
   .btn.sm{padding:5px 10px;font-size:12px;}
@@ -579,11 +606,14 @@ async function jsend(u,m,b){const r=await fetch(u,{method:m,headers:{"Content-Ty
 // ============ navigation ============
 const PAGES=["search","shows","movies","subs","profiles"];
 function nav(page){
-  // hide the detail sub-pages whenever we navigate to a top-level page
-  ["showdetail","moviedetail"].forEach(p=>{const el=$("page-"+p);if(el)el.classList.remove("on");});
+  // hide the detail sub-pages AND the requests page whenever we navigate to a
+  // top-level page (requests is injected separately, so hide it explicitly)
+  ["showdetail","moviedetail","requests"].forEach(p=>{const el=$("page-"+p);if(el)el.classList.remove("on");});
   PAGES.forEach(p=>{ $("page-"+p).classList.toggle("on",p===page);
     const dl=document.querySelector(`.navlink[data-page="${p}"]`);if(dl)dl.classList.toggle("on",p===page);
     const bl=document.querySelector(`.botlink[data-page="${p}"]`);if(bl)bl.classList.toggle("on",p===page); });
+  // clear requests nav highlight too
+  const rl=document.querySelector('.navlink[data-page="requests"]');if(rl)rl.classList.toggle("on",page==="requests");
   if(page==="shows")loadShows();
   if(page==="movies")loadMovies();
   if(page==="subs")loadSubs();
@@ -1206,12 +1236,10 @@ $("settingsBtn").addEventListener("click",async()=>{
     <select id="st_lang" style="width:100%">${[["en","English"],["any","Any language"],["es","Spanish"],["fr","French"],["de","German"],["it","Italian"],["ru","Russian"],["ja","Japanese"],["ko","Korean"],["zh","Chinese"],["pt","Portuguese"],["hi","Hindi"],["nl","Dutch"]].map(([v,n])=>`<option value="${v}" ${(s.db&&s.db.default_language||'en')===v?'selected':''}>${n}</option>`).join('')}</select>
     <label class="fld">Default quality profile <span class="muted">(applied to shows/movies with no profile of their own)</span></label>
     <select id="st_defprof" style="width:100%"><option value="">none (best-seeded)</option>${(profilesCache||[]).map(p=>`<option value="${p.id}" ${String(s.db&&s.db.default_profile_id||'')===String(p.id)?'selected':''}>${esc(p.name)}</option>`).join('')}</select>
-    <div class="row2"><div><label class="fld">Theme</label><select id="st_theme" style="width:100%">${['dark','light','auto'].map(t=>`<option ${env.UI_THEME===t?'selected':''}>${t}</option>`).join('')}</select></div>
-    <div><label class="fld">Accent</label><select id="st_accent" style="width:100%">${['blue','green','purple','amber','rose'].map(a=>`<option ${env.UI_ACCENT===a?'selected':''}>${a}</option>`).join('')}</select></div></div>
     <div style="margin-top:16px"><button class="btn" id="st_save">save changes</button></div>`);
   $("st_save").addEventListener("click",async()=>{
     await jsend("/api/settings","PATCH",{values:{tmdb_key:$("st_tmdb").value.trim(),JACKETT_URL:$("st_jurl").value.trim(),
-      REMOVE_ON_COMPLETE:$("st_rem").value,NOTIFY_URLS:$("st_notify").value.trim(),UI_THEME:$("st_theme").value,UI_ACCENT:$("st_accent").value,default_language:$("st_lang").value,default_profile_id:$("st_defprof").value||""}});
+      REMOVE_ON_COMPLETE:$("st_rem").value,NOTIFY_URLS:$("st_notify").value.trim(),default_language:$("st_lang").value,default_profile_id:$("st_defprof").value||""}});
     toast("Settings saved.");closeModal();refreshMeta();});
 });
 
@@ -1286,20 +1314,46 @@ async function navRequests(){
   const admin = ME && ME.role==="admin";
   let reqs=[];
   try{ reqs=(await jget("/api/requests")).requests; }catch(e){ host.innerHTML=`<div class="empty">Couldn't load requests.</div>`; return; }
-  if(!reqs.length){ host.innerHTML=`<div class="empty">No requests yet. ${admin?"":"Browse Shows or Movies and hit <b>Request</b> on something not in the library."}</div>`; return; }
+  const pending=reqs.filter(r=>r.status==="pending");
+  const resolved=reqs.filter(r=>r.status!=="pending");
+  const statusPill=s=>`<span class="pill ${s==='approved'?'have':(s==='pending'?'want':'')}" ${s==='declined'?'style="color:var(--bad);border-color:color-mix(in srgb,var(--bad) 40%,transparent)"':''}>${esc(s)}</span>`;
   const card=r=>`<div class="reqcard">
-    <div class="reqmeta"><b>${esc(r.title)}</b> ${r.year?`<span class="muted">(${r.year})</span>`:""}
-      <span class="pill ${r.status==='approved'?'have':(r.status==='pending'?'want':'')}">${esc(r.status)}</span>
-      <span class="muted" style="font-size:11px"> · ${esc(r.media_type)} · by ${esc(r.user||'?')}</span></div>
-    ${admin && r.status==='pending' ? `<div class="reqacts">
-      <button class="btn sm" data-act="approve" data-id="${r.id}">approve</button>
-      <button class="btn sm ghost" data-act="decline" data-id="${r.id}">decline</button></div>`:""}
+    <div class="reqart" style="${r.poster?`background-image:url('${esc(r.poster)}')`:''}">${r.poster?'':(r.media_type==='tv'?'TV':'★')}</div>
+    <div class="reqbody">
+      <div class="reqtitle">${esc(r.title)} ${r.year?`<span class="muted">(${r.year})</span>`:""}</div>
+      <div class="reqsub">${statusPill(r.status)}<span class="muted">${esc(r.media_type==='tv'?'series':'movie')} · requested by ${esc(r.user||'?')}</span></div>
+    </div>
+    <div class="reqacts">
+      ${admin && r.status==='pending' ? `
+        <button class="btn sm" data-act="approve" data-id="${r.id}">approve</button>
+        <button class="btn sm ghost" data-act="decline" data-id="${r.id}">decline</button>`:""}
+      ${admin && r.status!=='pending' ? `<button class="link-btn danger" data-clear="${r.id}">clear</button>`:""}
+    </div>
   </div>`;
-  host.innerHTML=`<h2 class="pagetitle">${admin?"Requests":"My Requests"}</h2>`+reqs.map(card).join("");
+  let html=`<div class="page-head"><h1>${admin?"Requests":"My Requests"}</h1>`;
+  if(admin&&resolved.length)html+=`<div class="ph-actions"><button class="btn ghost" id="reqClearAll">clear all resolved</button></div>`;
+  html+=`</div>`;
+  if(!reqs.length){
+    html+=`<div class="empty">No requests yet. ${admin?"":"Browse Shows or Movies and hit <b>Request</b> on something not in the library."}</div>`;
+  }else{
+    if(pending.length)html+=`<div class="reqsection-label">Pending (${pending.length})</div>`+pending.map(card).join("");
+    if(resolved.length)html+=`<div class="reqsection-label">Resolved (${resolved.length})</div>`+resolved.map(card).join("");
+  }
+  host.innerHTML=html;
   host.querySelectorAll("button[data-act]").forEach(b=>b.addEventListener("click",async()=>{
     try{ await jsend(`/api/requests/${b.dataset.id}/${b.dataset.act}`,"POST"); navRequests(); }
     catch(e){ toast(e.message,"err"); }
   }));
+  host.querySelectorAll("[data-clear]").forEach(b=>b.addEventListener("click",async()=>{
+    try{ await jsend(`/api/requests/${b.dataset.clear}`,"DELETE"); toast("Cleared."); navRequests(); }
+    catch(e){ toast(e.message,"err"); }
+  }));
+  const ca=$("reqClearAll");
+  if(ca)ca.addEventListener("click",async()=>{
+    if(!confirm(`Clear all ${resolved.length} resolved request(s)?`))return;
+    try{ for(const r of resolved){ await jsend(`/api/requests/${r.id}`,"DELETE"); } toast("Cleared resolved requests."); navRequests(); }
+    catch(e){ toast(e.message,"err"); }
+  });
 }
 $("accountBtn").addEventListener("click",()=>{
   if(!ME){location.href="/login";return;}
@@ -1326,20 +1380,38 @@ $("accountBtn").addEventListener("click",()=>{
 async function renderUsers(){
   let users=[];
   try{ users=(await jget("/api/admin/users")).users; }catch(e){ toast(e.message,"err"); return; }
-  const rows=users.map(u=>`<tr>
-    <td>${esc(u.username)}</td>
-    <td class="muted">${esc(u.role)}</td>
-    <td><span class="pill ${u.status==='active'?'have':(u.status==='pending'?'want':'')}">${esc(u.status)}</span></td>
-    <td style="text-align:right;white-space:nowrap">
-      ${u.status!=='active'?`<a class="lnk" data-act="status" data-id="${u.id}" data-val="active">approve</a>`:''}
-      ${u.status==='active'&&u.id!==ME.id?`<a class="lnk" data-act="status" data-id="${u.id}" data-val="disabled">disable</a>`:''}
-      ${u.id!==ME.id?`<a class="lnk" data-act="role" data-id="${u.id}" data-val="${u.role==='admin'?'user':'admin'}">${u.role==='admin'?'demote':'make admin'}</a>`:''}
-      <a class="lnk" data-act="autoapprove" data-id="${u.id}" data-val="${u.can_autoapprove?0:1}">${u.can_autoapprove?'require approval':'trust (auto-approve)'}</a>
-      <a class="lnk" data-act="reset" data-id="${u.id}">reset pw</a>
-      ${u.id!==ME.id?`<a class="lnk danger" data-act="delete" data-id="${u.id}">delete</a>`:''}
-    </td></tr>`).join("");
-  openModal("Users",`<table class="tbl" style="width:100%"><thead><tr><th>User</th><th>Role</th><th>Status</th><th></th></tr></thead><tbody>${rows}</tbody></table>
-    <div style="margin-top:16px;border-top:1px solid var(--line);padding-top:14px">
+  const initials=n=>(n||"?").slice(0,2).toUpperCase();
+  const roleColor=r=>r==='admin'?'var(--accent)':'var(--muted)';
+  const card=u=>{
+    const me=u.id===ME.id;
+    const trusted=!!u.can_autoapprove;
+    return `<div class="usercard">
+      <div class="useravatar" style="border-color:${roleColor(u.role)}">${initials(u.username)}</div>
+      <div class="userinfo">
+        <div class="username">${esc(u.username)}${me?'<span class="youtag">you</span>':''}</div>
+        <div class="usermeta">
+          <span class="pill ${u.status==='active'?'have':(u.status==='pending'?'want':'')}" ${u.status==='disabled'?'style="color:var(--bad);border-color:color-mix(in srgb,var(--bad) 40%,transparent)"':''}>${esc(u.status)}</span>
+          <span style="color:${roleColor(u.role)};font-family:var(--mono);font-size:11px;text-transform:uppercase;letter-spacing:.05em">${esc(u.role)}</span>
+          ${trusted?'<span class="trustbadge">⚡ auto-approve</span>':''}
+        </div>
+      </div>
+      <div class="useracts">
+        ${u.status==='pending'?`<button class="link-btn" data-act="status" data-id="${u.id}" data-val="active">approve</button>`:''}
+        ${u.status==='active'&&!me?`<button class="link-btn" data-act="status" data-id="${u.id}" data-val="disabled">disable</button>`:''}
+        ${u.status==='disabled'?`<button class="link-btn" data-act="status" data-id="${u.id}" data-val="active">enable</button>`:''}
+        ${!me?`<button class="link-btn" data-act="role" data-id="${u.id}" data-val="${u.role==='admin'?'user':'admin'}">${u.role==='admin'?'demote':'make admin'}</button>`:''}
+        <button class="link-btn" data-act="autoapprove" data-id="${u.id}" data-val="${trusted?0:1}">${trusted?'require approval':'trust'}</button>
+        <button class="link-btn" data-act="reset" data-id="${u.id}">reset pw</button>
+        ${!me?`<button class="link-btn danger" data-act="delete" data-id="${u.id}">delete</button>`:''}
+      </div>
+    </div>`;};
+  const pending=users.filter(u=>u.status==='pending');
+  const active=users.filter(u=>u.status!=='pending');
+  let body="";
+  if(pending.length)body+=`<div class="reqsection-label">Awaiting approval (${pending.length})</div>`+pending.map(card).join("");
+  body+=`<div class="reqsection-label">Members (${active.length})</div>`+active.map(card).join("");
+  openModal("Users",`${body}
+    <div style="margin-top:18px;border-top:1px solid var(--line);padding-top:16px">
       <label class="fld">Create user</label>
       <div style="display:flex;gap:8px;flex-wrap:wrap">
         <input type="text" id="nu_user" placeholder="username" style="flex:1;min-width:120px">
@@ -1348,7 +1420,7 @@ async function renderUsers(){
         <button class="btn" id="nu_create">Create</button>
       </div>
     </div>`);
-  $("modalBody").querySelectorAll("a.lnk").forEach(a=>a.addEventListener("click",async()=>{
+  $("modalBody").querySelectorAll("button[data-act]").forEach(a=>a.addEventListener("click",async()=>{
     const id=a.dataset.id, act=a.dataset.act, val=a.dataset.val;
     try{
       if(act==="status") await jsend(`/api/admin/users/${id}/status?status=${val}`,"POST");
